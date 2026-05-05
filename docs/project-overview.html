@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LiveTicker — Project Overview</title>
+<style>
+:root {
+  --bg: #0a0a12;
+  --bg-elev: #14141f;
+  --bg-elev2: #1c1c2c;
+  --line: #2a2a3e;
+  --ink: #e8e8f0;
+  --ink-dim: #9090a8;
+  --ink-mute: #5a5a72;
+  --accent: #b46bff;
+  --accent-2: #6bbbff;
+  --warn: #ff8a55;
+  --ok: #4dd190;
+  --crit: #ff5577;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a { color: var(--accent-2); text-decoration: none; border-bottom: 1px dotted currentColor; }
+a:hover { color: var(--accent); border-bottom-style: solid; }
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+/* ===== HERO ===== */
+.hero {
+  border-bottom: 1px solid var(--line);
+  background: radial-gradient(ellipse at top right, rgba(180,107,255,0.10), transparent 60%),
+              radial-gradient(ellipse at bottom left, rgba(107,187,255,0.08), transparent 50%),
+              var(--bg);
+  padding: 64px 0 48px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.15;
+  pointer-events: none;
+}
+.hero h1 {
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--ink), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero .tag {
+  font-size: 22px;
+  color: var(--ink-dim);
+  max-width: 720px;
+  margin-bottom: 32px;
+}
+.hero .tag em { color: var(--accent); font-style: normal; }
+.badges {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-top: 24px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  background: var(--bg-elev);
+  font-family: var(--mono);
+}
+.badge.live { border-color: var(--ok); color: var(--ok); }
+.badge.live::before {
+  content: "";
+  width: 8px; height: 8px;
+  background: var(--ok);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--ok);
+}
+.badge.target { border-color: var(--accent); color: var(--accent); }
+
+/* ===== SECTIONS ===== */
+section { padding: 56px 0; border-bottom: 1px solid var(--line); }
+section h2 {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+section h2 .num {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--ink-mute);
+  font-weight: 400;
+  vertical-align: super;
+  margin-right: 12px;
+}
+section .lede {
+  font-size: 17px;
+  color: var(--ink-dim);
+  max-width: 760px;
+  margin-bottom: 32px;
+}
+section h3 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin: 24px 0 8px;
+  color: var(--ink);
+}
+
+p { margin: 12px 0; color: var(--ink); max-width: 760px; }
+p.dim { color: var(--ink-dim); font-size: 15px; }
+
+/* ===== PROBLEM/SOLUTION ===== */
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+.split .card {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px;
+}
+.split .card h3 {
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-mute);
+}
+.split .card.problem h3 { color: var(--warn); }
+.split .card.solution h3 { color: var(--accent); }
+.split .card p { font-size: 16px; }
+
+/* ===== ARCHITECTURE DIAGRAM ===== */
+.arch {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 32px;
+  margin: 24px 0;
+}
+.arch-row { display: grid; gap: 12px; margin-bottom: 12px; }
+.arch-row.three { grid-template-columns: repeat(3, 1fr); }
+.arch-block {
+  background: var(--bg-elev2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+}
+.arch-block .label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.arch-block .name {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.arch-block .desc {
+  font-size: 13px;
+  color: var(--ink-dim);
+  line-height: 1.5;
+}
+.arch-arrow {
+  text-align: center;
+  font-family: var(--mono);
+  color: var(--ink-mute);
+  font-size: 18px;
+  padding: 4px 0;
+}
+.arch-block.eng {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, rgba(180,107,255,0.10), var(--bg-elev2));
+}
+.arch-block.eng .label { color: var(--accent); }
+.arch-block.out {
+  border-color: var(--accent-2);
+}
+.arch-block.out .label { color: var(--accent-2); }
+
+/* ===== ROLES TABLE ===== */
+.roles {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 16px 0;
+}
+.role {
+  display: grid;
+  grid-template-columns: 200px 80px 1fr;
+  gap: 16px;
+  padding: 14px 18px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  align-items: center;
+}
+.role .who { font-weight: 600; }
+.role .pct {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--accent);
+  text-align: right;
+}
+.role .what {
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+
+/* ===== TIMELINE ===== */
+.timeline {
+  position: relative;
+  padding-left: 32px;
+  margin: 24px 0;
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--line);
+}
+.beat {
+  position: relative;
+  margin-bottom: 20px;
+}
+.beat::before {
+  content: "";
+  position: absolute;
+  left: -29px;
+  top: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--accent);
+}
+.beat.crit::before { border-color: var(--crit); background: var(--crit); }
+.beat .t {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.beat .desc { font-size: 15px; color: var(--ink); max-width: 760px; }
+.beat.crit .t { color: var(--crit); }
+
+/* ===== DECISIONS LIST ===== */
+.decisions {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0;
+}
+.dec {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.dec .qnum {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-mute);
+  font-weight: 600;
+}
+.dec .what { font-size: 14px; color: var(--ink); }
+.dec .what strong { color: var(--accent); font-weight: 600; }
+
+/* ===== AWARDS ===== */
+.awards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin: 16px 0;
+}
+.award {
+  padding: 20px 24px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  position: relative;
+}
+.award.target {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, rgba(180,107,255,0.10), var(--bg-elev));
+}
+.award.target::before {
+  content: "TARGET";
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  background: var(--bg);
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+}
+.award h4 {
+  font-size: 15px;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.award .amt {
+  font-family: var(--mono);
+  font-size: 22px;
+  color: var(--ink);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.award .why {
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+/* ===== STATUS BAR ===== */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+}
+.stat {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 14px;
+}
+.stat .name { color: var(--ink-dim); }
+.stat .val { font-family: var(--mono); font-weight: 600; }
+.stat .val.ok { color: var(--ok); }
+.stat .val.todo { color: var(--warn); }
+.stat .val.crit { color: var(--crit); }
+
+/* ===== FOOTER ===== */
+footer { padding: 32px 0 64px; }
+footer .meta {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-mute);
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+/* ===== PULL QUOTE ===== */
+.pull {
+  margin: 32px 0;
+  padding: 28px 32px;
+  background: var(--bg-elev);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 12px 12px 0;
+  font-size: 18px;
+  color: var(--ink);
+  font-style: italic;
+  line-height: 1.5;
+}
+.pull strong { color: var(--accent); font-style: normal; }
+
+/* ===== CODE ===== */
+code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  padding: 2px 6px;
+  background: var(--bg-elev2);
+  border-radius: 4px;
+  color: var(--accent);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 720px) {
+  .hero h1 { font-size: 36px; }
+  .hero .tag { font-size: 18px; }
+  .split { grid-template-columns: 1fr; }
+  .arch-row.three { grid-template-columns: 1fr; }
+  .role { grid-template-columns: 1fr; gap: 4px; }
+  .role .pct { text-align: left; }
+  .awards { grid-template-columns: 1fr; }
+  .status-grid { grid-template-columns: 1fr; }
+  .dec { grid-template-columns: 1fr; gap: 4px; }
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="wrap">
+    <h1>LiveTicker</h1>
+    <p class="tag">A real-time coordination layer for live events.<br>
+    100 stakeholders become <em>100 sensors</em> — one agent weaves them.</p>
+    <div class="badges">
+      <span class="badge live">Live work — GOSIM Hackathon 2026</span>
+      <span class="badge">OpenClaw track</span>
+      <span class="badge">Solo (b0kelmann)</span>
+      <span class="badge">Apache-2.0</span>
+      <span class="badge target">Target: Z.AI Innovation Award · $2k</span>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <h2><span class="num">1</span>The problem &amp; the move</h2>
+    <p class="lede">Every live event has the same broken loop: a few organizers can't see everything, and the people who can see something happening have no easy way to surface it. Bottlenecks form. Tragedies (Astroworld 2021) happen.</p>
+
+    <div class="split">
+      <div class="card problem">
+        <h3>The pain</h3>
+        <p><strong>1 staff member per ~100 attendees.</strong> Organizers can't be everywhere, talks run long, lunch lines back up, crowds form unsafe clusters at one stage while another sits empty. By the time someone notices, it's too late.</p>
+        <p class="dim">Information about reality lives in dozens of heads, none of them connected.</p>
+      </div>
+      <div class="card solution">
+        <h3>LiveTicker's move</h3>
+        <p><strong>Turn every stakeholder into a sensor.</strong> Fans, crew, security, medics — they each have a simple channel where they can ask, signal, or post. An LLM-backed agent fuses all signals against an explicit Plan, Risk Catalog, and Goals — and routes the right action to the right person.</p>
+        <p class="dim">No more bottleneck on coordination — the system handles fanout in seconds.</p>
+      </div>
+    </div>
+
+    <div class="pull">
+      Think of it as <strong>the Bahn delay-display, but for everything happening at a festival</strong> — and instead of waiting for one dispatcher, the system itself reads what 30+ people are reporting and routes interventions before things break.
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2><span class="num">2</span>Architecture</h2>
+    <p class="lede">Three explicit knowledge stores, one reasoning engine, three input channels, multi-channel output. The agent is structured — not a black box.</p>
+
+    <div class="arch">
+      <div class="arch-row three">
+        <div class="arch-block">
+          <div class="label">Plan State</div>
+          <div class="name">What should happen</div>
+          <div class="desc">Schedule, resources, roles, capacity targets — the event's intended trajectory.</div>
+        </div>
+        <div class="arch-block">
+          <div class="label">Reality State</div>
+          <div class="name">What's actually happening</div>
+          <div class="desc">Live signals from stakeholders — their messages, questions, status reports — with extracted sensor info.</div>
+        </div>
+        <div class="arch-block">
+          <div class="label">Risk Catalog</div>
+          <div class="name">What could go wrong</div>
+          <div class="desc">Multi-author library of patterns + suggested actions. Editable live by stakeholders during the event.</div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↓ all three flow into ↓</div>
+
+      <div class="arch-row">
+        <div class="arch-block eng">
+          <div class="label">Reasoning Engine (LLM)</div>
+          <div class="name">Plan ↔ Reality ↔ Risk diff, in context of Event Goals + Stakeholder Taxonomy</div>
+          <div class="desc">"Where does Reality drift from Plan? Does it match a Risk pattern? Whose Goals are advanced/threatened? Who needs to know, in what tone, via what channel?"</div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↓</div>
+
+      <div class="arch-row">
+        <div class="arch-block out">
+          <div class="label">Output Router</div>
+          <div class="name">Per-stakeholder fanout</div>
+          <div class="desc">One signal becomes N tailored notifications — Security, Medics, Artists, Fans, PA — each in the right register.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Three input channels (separated, OpenClaw skill capabilities)</h3>
+    <div class="status-grid">
+      <div class="stat"><div class="name"><code>ticker.post</code> — share an update</div><div class="val">all</div></div>
+      <div class="stat"><div class="name"><code>ticker.signal</code> — flag drift / risk</div><div class="val">stakeholders</div></div>
+      <div class="stat"><div class="name"><code>ticker.ask</code> — question (also: implicit sensor)</div><div class="val">all</div></div>
+    </div>
+    <p class="dim">When 5 fans ask "where's stage A?" within 60 seconds, that's not just 5 questions — it's a signal of signage failure that the agent automatically surfaces to the organizer.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2><span class="num">3</span>The demo — 3 minutes, audience-as-system</h2>
+    <p class="lede"><strong>Setting:</strong> Tomorrowland, Day 2, 19:30 — five minutes before the headliner. The jury and audience scan a QR, get assigned festival roles, and live-drive the demo for 2 minutes.</p>
+
+    <h3>Roles distributed across ~30 attendees</h3>
+    <div class="roles">
+      <div class="role"><div class="who">Fan / Festival-goer</div><div class="pct">50% · 15</div><div class="what">"where toilet near stage A?", "stage 1 too crowded", "looking for my group"</div></div>
+      <div class="role"><div class="who">Artist / Crew</div><div class="pct">13% · 4</div><div class="what">"my mic is dead", "need stagehand", "set time?"</div></div>
+      <div class="role"><div class="who">Stage Tech / Lighting</div><div class="pct">10% · 3</div><div class="what">"failure stage 3", "pyro check OK"</div></div>
+      <div class="role"><div class="who">Security / Crowd Control</div><div class="pct">10% · 3</div><div class="what">"cluster risk stage 1", "fire route blocked"</div></div>
+      <div class="role"><div class="who">Medic</div><div class="pct">7% · 2</div><div class="what">"2 heat cases at main stage"</div></div>
+      <div class="role"><div class="who">Foodtruck / Vendor</div><div class="pct">7% · 2</div><div class="what">"sold out burger", "long queue"</div></div>
+      <div class="role"><div class="who">Organizer (Sarah stand-in)</div><div class="pct">3% · 1</div><div class="what">authors goals + risks live</div></div>
+    </div>
+
+    <h3>Beat-by-beat</h3>
+    <div class="timeline">
+      <div class="beat">
+        <div class="t">T+0:00</div>
+        <div class="desc">QR scan, role assignment. Big stage screen shows countdown to headliner.</div>
+      </div>
+      <div class="beat">
+        <div class="t">T+0:30</div>
+        <div class="desc">Audience tipping playful inputs. Reality State fills live. Agent answers individuals; jury sees the dashboard light up.</div>
+      </div>
+      <div class="beat">
+        <div class="t">T+1:00</div>
+        <div class="desc">Tonal shift — 1-2 fans start reporting "crowded near front" (organic, or backstage plant if needed).</div>
+      </div>
+      <div class="beat crit">
+        <div class="t">T+1:30 — KILLER MOMENT</div>
+        <div class="desc">Confidence threshold exceeded → agent fans out simultaneously to Security ("route fans to stage 2"), Stage Manager ("30s safety pause"), Medics ("standby"), Public PA ("brief safety pause"), Fans ("stage 2 has space"). All visible on the stage screen with audit-log reasoning chain.</div>
+      </div>
+      <div class="beat">
+        <div class="t">T+1:50</div>
+        <div class="desc">"Cluster defused." Status update on stage screen. Audience members see notifications on their devices.</div>
+      </div>
+      <div class="beat">
+        <div class="t">T+2:30</div>
+        <div class="desc">Closing pitch — "Astroworld 2021 happened because nobody had all the signals at once. Here, the agent did." GitHub URL.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2><span class="num">4</span>Architectural decisions (settled)</h2>
+    <p class="lede">14 design questions resolved through a Socratic grilling session. Each decision has a rationale; future Claude sessions should respect them unless explicitly revisited.</p>
+
+    <div class="decisions">
+      <div class="dec"><div class="qnum">Q1</div><div class="what"><strong>Aha-moment</strong>: dynamic event coordination — not "smart router", not "auto-broadcaster"</div></div>
+      <div class="dec"><div class="qnum">Q2</div><div class="what"><strong>Tool type</strong>: coordination-tool (not schedule-tool)</div></div>
+      <div class="dec"><div class="qnum">Q3</div><div class="what"><strong>Agent form</strong>: Voll Input-Fusion — agent senses on its own, not just routes external inputs</div></div>
+      <div class="dec"><div class="qnum">Q4</div><div class="what"><strong>Architecture spine</strong>: Plan State / Reality State / Risk Catalog as three explicit stores</div></div>
+      <div class="dec"><div class="qnum">Q5</div><div class="what"><strong>Stakeholder Graph</strong>: first-class citizen — built into the data model from Day 1</div></div>
+      <div class="dec"><div class="qnum">Q6</div><div class="what"><strong>Input channels</strong>: 3 separated (<code>ticker.post</code>, <code>ticker.signal</code>, <code>ticker.ask</code>)</div></div>
+      <div class="dec"><div class="qnum">Q7-bis</div><div class="what"><strong>Demo format</strong>: Audience-as-System — QR scan + roles, audience drives the demo</div></div>
+      <div class="dec"><div class="qnum">Q8</div><div class="what"><strong>Goal granularity</strong>: Stufe B — Goals + Drivers in YAML, organizer can edit live in demo</div></div>
+      <div class="dec"><div class="qnum">Q11</div><div class="what"><strong>Event scenario</strong>: Festival, Tomorrowland-style, Day 2, 19:30 before headliner</div></div>
+      <div class="dec"><div class="qnum">Q12</div><div class="what"><strong>Time frame</strong>: Frozen Moment with countdown — demo time = story time, max drama</div></div>
+      <div class="dec"><div class="qnum">Q13</div><div class="what"><strong>Scale framing</strong>: Big-Frame — claim festival-real numbers, demo a small subset</div></div>
+      <div class="dec"><div class="qnum">Q14</div><div class="what"><strong>Killer-Moment</strong>: Crowd-Crush Detection (Astroworld pattern) — multi-channel fanout</div></div>
+    </div>
+
+    <h3>Open decisions</h3>
+    <div class="decisions">
+      <div class="dec"><div class="qnum">Q16?</div><div class="what">Frontend tech stack — Plain HTML+JS vs. Telegram Bot vs. React. Default: Plain HTML.</div></div>
+      <div class="dec"><div class="qnum">Q17?</div><div class="what">Hosting for live demo — ngrok vs. Vercel/Railway. Default: ngrok with cloud fallback.</div></div>
+      <div class="dec"><div class="qnum">Q18?</div><div class="what">Backstage-plant inputs as safety net for killer-moment. Default: yes, ~3 plants.</div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2><span class="num">5</span>Build status &amp; plan</h2>
+    <p class="lede">2-day solo build. Day 1 is backend substance, Day 2 is frontend + deploy + demo drill.</p>
+
+    <h3>What works (verified)</h3>
+    <div class="status-grid">
+      <div class="stat"><div class="name">GLM-5.1 LLM call via R9S endpoint</div><div class="val ok">✓ live</div></div>
+      <div class="stat"><div class="name">Markdown-fence stripping in adapter</div><div class="val ok">✓ live</div></div>
+      <div class="stat"><div class="name">Last-choice extraction (GLM reasoning trace)</div><div class="val ok">✓ live</div></div>
+      <div class="stat"><div class="name">Broadcaster end-to-end demo</div><div class="val ok">✓ live</div></div>
+      <div class="stat"><div class="name">4 worktrees with shared <code>.env</code> + <code>.venv</code></div><div class="val ok">✓ live</div></div>
+      <div class="stat"><div class="name">README disclosure section (§5, §13)</div><div class="val ok">✓ live</div></div>
+    </div>
+
+    <h3>Build backlog (Day 1)</h3>
+    <div class="status-grid">
+      <div class="stat"><div class="name">3 endpoints (<code>/post</code>, <code>/signal</code>, <code>/ask</code>)</div><div class="val todo">todo</div></div>
+      <div class="stat"><div class="name">Plan / Reality / Risk stores</div><div class="val todo">todo</div></div>
+      <div class="stat"><div class="name">Reasoning loop + Output Router</div><div class="val todo">todo</div></div>
+      <div class="stat"><div class="name">Goals + Stakeholder Taxonomy YAML</div><div class="val todo">todo</div></div>
+      <div class="stat"><div class="name"><code>event-config.yaml</code> (Tomorrowland)</div><div class="val todo">todo</div></div>
+      <div class="stat"><div class="name">Smoketest end-to-end</div><div class="val todo">todo</div></div>
+    </div>
+
+    <h3>Build backlog (Day 2)</h3>
+    <div class="status-grid">
+      <div class="stat"><div class="name">QR + role-assignment landing page</div><div class="val todo">todo</div></div>
+      <div class="stat"><div class="name">Per-role input/output UI</div><div class="val todo">todo</div></div>
+      <div class="stat"><div class="name">Stage screen / jury dashboard</div><div class="val todo">todo</div></div>
+      <div class="stat"><div class="name">Real-user collection (Discord post + ngrok deploy)</div><div class="val todo">todo</div></div>
+      <div class="stat"><div class="name">Submission video (3 min)</div><div class="val crit">critical</div></div>
+      <div class="stat"><div class="name">Demo drill (5x runs)</div><div class="val todo">todo</div></div>
+      <div class="stat"><div class="name">Submission form (before deadline)</div><div class="val crit">critical</div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2><span class="num">6</span>Award strategy</h2>
+    <p class="lede">5 awards, top 3 get sponsor awards (sponsor matches model used). Tom's path: top 3 ranking → Z.AI Innovation Award (because GLM is Z.AI's model).</p>
+
+    <div class="awards">
+      <div class="award target">
+        <h4>Z.AI Innovation Award</h4>
+        <div class="amt">$2,000</div>
+        <div class="why">Realistic primary target — Tom uses GLM-5.1 (Zhipu AI / Z.AI). Innovation-Score is critical: "crowdsourced sensing from Q&amp;A" + "extensible Risk Catalog" + Plan-Reality-Risk architecture all play to this.</div>
+      </div>
+      <div class="award">
+        <h4>GOSIM Agentic Architect Award</h4>
+        <div class="amt">$1,000 + $1k tokens</div>
+        <div class="why">Realistic secondary — the Plan/Reality/Risk architecture, multi-stakeholder graph, and 3-channel skill design are an architectural pitch.</div>
+      </div>
+      <div class="award">
+        <h4>Minimax Excellence Award</h4>
+        <div class="amt">$2,000</div>
+        <div class="why">Not realistic — would require switching to MiniMax model. No.</div>
+      </div>
+      <div class="award">
+        <h4>Moonshot Visionary Award</h4>
+        <div class="amt">$2,000</div>
+        <div class="why">Possible if a Smart Helper loop is built using Kimi (Moonshot) for Q&amp;A — composability bonus. Bonus, not primary.</div>
+      </div>
+    </div>
+
+    <h3>How each judging dimension is served</h3>
+    <div class="status-grid">
+      <div class="stat"><div class="name">Innovation (20%)</div><div class="val">crowdsourced sensing + agentic fanout</div></div>
+      <div class="stat"><div class="name">Tech Depth (20%)</div><div class="val">Plan/Reality/Risk explicit stores</div></div>
+      <div class="stat"><div class="name">Completeness (20%)</div><div class="val">live audience demo + audit log</div></div>
+      <div class="stat"><div class="name">Practicality (20%)</div><div class="val">Astroworld-resonant pain</div></div>
+      <div class="stat"><div class="name">Presentation (20%)</div><div class="val">3-min audience-as-system experience</div></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p class="dim">This document is the visual companion to <code>CLAUDE.md</code>, the working context for fresh Claude Code sessions.</p>
+    <div class="meta">
+      <span>Repo: github.com/b0kelmann/liveticker-skill</span>
+      <span>License: Apache-2.0</span>
+      <span>Built for: GOSIM Paris 2026</span>
+      <span>Author: Tom Bockisch (b0kelmann)</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
