@@ -37,16 +37,34 @@ def _client() -> OpenAI:
     return OpenAI(api_key=api_key, base_url=base_url)
 
 
+def _strip_code_fences(text: str) -> str:
+    """Remove a leading ```json (or ```) opener and trailing ``` closer.
+
+    Chat models often wrap structured output in markdown fences even when
+    asked for raw JSON. Stripping here keeps every caller's `json.loads`
+    happy without each one re-implementing the cleanup.
+    """
+    text = text.strip()
+    if not text.startswith("```"):
+        return text
+    lines = text.split("\n")
+    lines = lines[1:]  # drop opening fence (```json or ```)
+    if lines and lines[-1].strip() == "```":
+        lines = lines[:-1]  # drop closing fence
+    return "\n".join(lines).strip()
+
+
 def chat(messages: list[dict], *, model: str | None = None, **kwargs) -> str:
     """Send a chat completion and return the assistant's text reply.
 
     GLM-5.1 returns two choices when extended thinking is on: the reasoning
     trace at index 0 and the final answer at the last index. Always take the
     last choice — that's the user-facing reply across all providers.
+    Markdown code fences are stripped so callers can json.loads directly.
     """
     response = _client().chat.completions.create(
         model=model or os.environ["LLM_MODEL"],
         messages=messages,
         **kwargs,
     )
-    return response.choices[-1].message.content or ""
+    return _strip_code_fences(response.choices[-1].message.content or "")
