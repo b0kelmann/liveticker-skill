@@ -38,10 +38,15 @@ def _client() -> OpenAI:
 
 
 def chat(messages: list[dict], *, model: str | None = None, **kwargs) -> str:
-    """Send a chat completion and return the assistant's text reply."""
+    """Send a chat completion and return the assistant's text reply.
+
+    GLM-5.1 returns two choices when extended thinking is on: the reasoning
+    trace at index 0 and the final answer at the last index. Always take the
+    last choice — that's the user-facing reply across all providers.
+    """
     response = _client().chat.completions.create(
         model=model or os.environ["LLM_MODEL"],
         messages=messages,
         **kwargs,
     )
-    return response.choices[0].message.content or ""
+    return response.choices[-1].message.content or ""
