@@ -1,0 +1,67 @@
+name: liveticker
+version: 0.1.0
+description: |
+  A shared live event ticker for hackathons, conferences and meetups.
+  Hosts and participants post updates; the skill classifies, summarises
+  and recaps them on demand.
+author: GOSIM Paris 2026 hackathon submission
+license: Apache-2.0
+
+capabilities:
+  - id: ticker.post
+    description: Post an update to the live feed.
+    inputs:
+      text: { type: string, required: true }
+      author: { type: string, required: true }
+      team: { type: string, required: false }
+      attachments:
+        type: array
+        items: { type: file }
+        required: false
+      consent_public:
+        type: boolean
+        default: false
+        description: |
+          If true, the Auto-Broadcaster loop is allowed to surface this
+          item to the public. Default is private-to-event.
+    outputs:
+      id: { type: string }
+
+  - id: ticker.feed
+    description: Read the live feed, optionally filtered.
+    inputs:
+      team: { type: string, required: false }
+      since: { type: timestamp, required: false }
+      category: { type: string, required: false }
+    outputs:
+      items: { type: array }
+
+  - id: ticker.ask
+    description: Answer a natural-language question about the feed.
+    inputs:
+      question: { type: string, required: true }
+    outputs:
+      answer: { type: string }
+      sources: { type: array }
+
+  - id: ticker.digest
+    description: Generate a digest of the last N minutes.
+    inputs:
+      window_minutes: { type: integer, default: 30 }
+    outputs:
+      summary: { type: string }
+
+  - id: ticker.recap
+    description: Generate the full end-of-event recap.
+    outputs:
+      markdown: { type: string }
+      media: { type: array }
+
+permissions:
+  - read: feed
+  - write: feed
+  - admin: recap, acl
+
+audit:
+  enabled: true
+  sink: ./audit.log
