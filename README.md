@@ -162,6 +162,30 @@ demo video is at [`docs/demo-video.md`](docs/demo-video.md).
 - Speech-to-ticker for hands-free posting during demos.
 - Visual auto-broadcaster: short clip generation from media + caption.
 
+## Pre-existing components and tools used
+
+Per the GOSIM Hackathon Rules (§5 and §13), here is a clear separation:
+
+**Pre-existing (drafted with Claude Code before the hackathon):**
+
+- The skill scaffold in `skill/loops/broadcaster.py`
+- The skill manifest at `skill/manifest.yaml`
+- The FastAPI shell in `skill/server.py`
+- The structural pitch in this README
+
+**Built during the hackathon:**
+
+- `skill/llm.py` — LLM adapter for GLM-5.1 via RouteTokens (multi-choice handling, markdown-fence stripping)
+- `examples/run_broadcaster_demo.py` — end-to-end wiring of the broadcaster skeleton to the live model
+- (Updated as more is built — see commit history on the `loop/auto-broadcaster`, `loop/bottleneck-detector`, and `loop/smart-helper` branches)
+
+**Build tools used:**
+
+- **Claude Code** (Anthropic) — pair-coding throughout the build session. Does not run inside the deployed skill.
+- **GLM-5.1** (Zhipu AI / Z.AI) via RouteTokens — the runtime model that powers all skill loops in production.
+
+The runtime model (GLM-5.1) is the one actually invoked inside LiveTicker when it makes a decision; Claude Code is a build-time tool only.
+
 ## License
 
 Apache-2.0 — same spirit as the rest of the OpenClaw ecosystem.
