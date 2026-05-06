@@ -10,7 +10,7 @@
 
 <header>
   <div>
-    <h1>{{ event.name }}</h1>
+    <h1>{{ event.name }} <small class="event-mode">[{{ event.mode or '—' }}]</small></h1>
     <p class="scenario">{{ event.scenario }}</p>
   </div>
   <div class="status-pill" id="status-pill"
@@ -18,6 +18,13 @@
     {% include "_header.html" %}
   </div>
 </header>
+
+<div class="events-bar"
+     hx-get="/ui/event-switcher"
+     hx-trigger="events-changed from:body"
+     hx-swap="innerHTML">
+  {% include "_event_switcher.html" %}
+</div>
 
 <main class="grid">
 
@@ -47,6 +54,14 @@
 
   <section class="card audit" hx-get="/ui/audit" hx-trigger="every 2s" hx-swap="innerHTML">
     {% include "_audit.html" %}
+  </section>
+
+  <section class="card setup">
+    {% include "_setup.html" %}
+  </section>
+
+  <section class="card setup setup-stakeholders-card">
+    {% include "_setup_stakeholders.html" %}
   </section>
 
 </main>
@@ -98,6 +113,74 @@
   </div>
 
 </footer>
+
+<script>
+// Plan view-pill switching with localStorage persistence.
+// All views are server-rendered in the .card.plan; we just toggle .active.
+// Re-applied on every htmx:afterSwap because polling replaces the innerHTML.
+(function () {
+  const STORAGE_KEY = 'liveticker.plan-view';
+
+  function planCard() {
+    return document.querySelector('.card.plan');
+  }
+
+  function availableViews() {
+    const card = planCard();
+    if (!card) return [];
+    return Array.from(card.querySelectorAll('.view-pill')).map(p => p.dataset.view);
+  }
+
+  function activate(view) {
+    const card = planCard();
+    if (!card) return;
+    card.querySelectorAll('.plan-view').forEach(v => {
+      v.classList.toggle('active', v.dataset.view === view);
+    });
+    card.querySelectorAll('.view-pill').forEach(p => {
+      p.classList.toggle('active', p.dataset.view === view);
+    });
+  }
+
+  function restore() {
+    const views = availableViews();
+    if (views.length === 0) return;
+    const saved = localStorage.getItem(STORAGE_KEY);
+    const target = views.includes(saved) ? saved : views[0];
+    activate(target);
+  }
+
+  document.addEventListener('click', e => {
+    const pill = e.target.closest('.view-pill');
+    if (!pill) return;
+    const view = pill.dataset.view;
+    localStorage.setItem(STORAGE_KEY, view);
+    activate(view);
+  });
+
+  // Copy stakeholder magic-link URLs to clipboard
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.copy-magic-btn');
+    if (!btn) return;
+    const path = btn.dataset.magicUrl;
+    const fullUrl = window.location.origin + path;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+      const original = btn.textContent;
+      btn.textContent = '✓ kopiert';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.classList.remove('copied');
+      }, 1500);
+    }).catch(() => { btn.textContent = '✗ failed'; });
+  });
+
+  document.addEventListener('htmx:afterSwap', restore);
+  document.addEventListener('DOMContentLoaded', restore);
+  // restore once now too in case DOMContentLoaded already fired
+  restore();
+})();
+</script>
 
 </body>
 </html>

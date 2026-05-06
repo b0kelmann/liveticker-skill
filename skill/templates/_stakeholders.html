@@ -1,17 +1,37 @@
 <h2>👥 Stakeholders</h2>
 {% if stakeholders %}
-<ul class="items">
+{% set by_cat = {} %}
 {% for s in stakeholders %}
-  <li class="role-{{ s.role.value }}">
-    <span class="badge role-{{ s.role.value }}">{{ s.role.value }}</span>
-    <span class="what">{{ s.display_name or s.id }}</span>
-    <span class="meta">@{{ s.area or '?' }}</span>
-    {% if inbox_counts.get(s.id, 0) > 0 %}
-      <span class="badge inbox">📨 {{ inbox_counts[s.id] }}</span>
-    {% endif %}
-  </li>
+  {% set _ = by_cat.setdefault(s.category or '— no category', []).append(s) %}
 {% endfor %}
-</ul>
+
+{% for cat, items in by_cat.items() %}
+  <details class="cat-group" open>
+    <summary>
+      <span class="cat-label">{{ cat }}</span>
+      <span class="day-count">{{ items | length }}</span>
+    </summary>
+    <ul class="items">
+    {% for s in items %}
+      <li class="role-{{ s.role.value }}">
+        <span class="badge role-{{ s.role.value }}">{{ s.role.value }}</span>
+        <span class="what">{{ s.display_name or s.id }}</span>
+        <span class="meta">
+          {% if s.area %}@{{ s.area }}{% endif %}
+          {% if s.email %} · ✉ {{ s.email }}{% endif %}
+        </span>
+        {% if inbox_counts.get(s.id, 0) > 0 %}
+          <span class="badge inbox">📨 {{ inbox_counts[s.id] }}</span>
+        {% endif %}
+        <button class="copy-magic-btn" type="button"
+                data-magic-url="/me/{{ s.id }}"
+                title="Copy stakeholder URL (Phase 3 fills the page)">🔗 link</button>
+        {% if s.notes %}<div class="notes">↳ {{ s.notes }}</div>{% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+  </details>
+{% endfor %}
 {% else %}
-<p class="empty">niemand da. unten "Seed: 3 Fans + …" klicken.</p>
+<p class="empty">niemand da. Stakeholders unten in der Setup-Card hinzufügen oder das "Seed"-Preset klicken.</p>
 {% endif %}

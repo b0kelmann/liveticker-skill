@@ -1,12 +1,145 @@
 <h2>📅 Plan</h2>
-<ul class="items">
-{% for p in plan %}
-  <li class="status-{{ p.status.value }}">
-    <span class="time">{{ p.time }}</span>
-    <span class="what">{{ p.what }}</span>
-    <span class="meta">@{{ p.where or '?' }} · {{ p.who | map(attribute='value') | join(', ') }}</span>
-    <span class="badge">{{ p.status.value }}</span>
-    {% if p.notes %}<div class="notes">↳ {{ p.notes }}</div>{% endif %}
-  </li>
+
+{# Decide which views are available based on what data the event actually has. #}
+{% set has_days = plan | selectattr('day') | list | length > 0 %}
+{% set distinct_tracks = plan | selectattr('track') | map(attribute='track') | unique | list %}
+{% set distinct_wheres = plan | selectattr('where') | map(attribute='where') | unique | list %}
+{% set has_tracks = distinct_tracks | length >= 2 %}
+{% set has_wheres = distinct_wheres | length >= 2 %}
+
+{# Server-suggested view_modes from the event, intersected with what's actually possible. #}
+{% set suggested = event.view_modes or [] %}
+{% set available = [] %}
+{% if 'chronological' in suggested or not suggested %}{% set _ = available.append('chronological') %}{% endif %}
+{% if has_days and ('by_day' in suggested or 'by_day' not in suggested) %}{% set _ = available.append('by_day') %}{% endif %}
+{% if has_tracks %}{% set _ = available.append('by_track') %}{% endif %}
+{% if has_wheres %}{% set _ = available.append('by_where') %}{% endif %}
+
+{# Filter to remove duplicates while preserving order. #}
+{% set seen_views = [] %}
+{% set views = [] %}
+{% for v in available %}
+  {% if v not in seen_views %}{% set _ = seen_views.append(v) %}{% set _ = views.append(v) %}{% endif %}
 {% endfor %}
+
+{% if views | length > 1 %}
+<div class="view-pills" data-plan-views>
+  {% for v in views %}
+    <button class="view-pill" data-view="{{ v }}">
+      {% if v == 'chronological' %}🕒 Chronological
+      {% elif v == 'by_day' %}📅 By Day
+      {% elif v == 'by_track' %}🎯 By Track
+      {% elif v == 'by_where' %}🏛 By Room/Stage
+      {% else %}{{ v }}{% endif %}
+    </button>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ---- View: chronological (flat, sorted by day+time) ---- #}
+{% if 'chronological' in views %}
+<div class="plan-view" data-view="chronological">
+  <ul class="items">
+    {% for p in plan %}
+      {% include "_plan_item.html" %}
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{# ---- View: by_day ---- #}
+{% if 'by_day' in views %}
+<div class="plan-view" data-view="by_day">
+  {% for day, items in plan | groupby('day') %}
+    <details class="day-section" open>
+      <summary>
+        <span class="day-label">{{ day or 'Unscheduled' }}</span>
+        <span class="day-count">{{ items | list | length }} items</span>
+      </summary>
+      <ul class="items">
+        {% for p in items %}
+          {% include "_plan_item.html" %}
+        {% endfor %}
+      </ul>
+    </details>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ---- View: by_track ---- #}
+{% if 'by_track' in views %}
+<div class="plan-view" data-view="by_track">
+  {% set with_track = plan | selectattr('track') | list %}
+  {% set without_track = plan | rejectattr('track') | list %}
+  {% for track, items in with_track | groupby('track') %}
+    <details class="track-section" open>
+      <summary>
+        <span class="track-label">🎯 {{ track }}</span>
+        <span class="day-count">{{ items | list | length }} items</span>
+      </summary>
+      <ul class="items">
+        {% for p in items %}
+          {% set skip_track = True %}
+          {% include "_plan_item.html" %}
+        {% endfor %}
+      </ul>
+    </details>
+  {% endfor %}
+  {% if without_track %}
+    <details class="track-section">
+      <summary>
+        <span class="track-label">— no track —</span>
+        <span class="day-count">{{ without_track | length }} items</span>
+      </summary>
+      <ul class="items">
+        {% for p in without_track %}
+          {% include "_plan_item.html" %}
+        {% endfor %}
+      </ul>
+    </details>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ---- View: by_where (physical room/stage) ---- #}
+{% if 'by_where' in views %}
+<div class="plan-view" data-view="by_where">
+  {% set with_where = plan | selectattr('where') | list %}
+  {% set without_where = plan | rejectattr('where') | list %}
+  {% for where, items in with_where | groupby('where') %}
+    <details class="where-section" open>
+      <summary>
+        <span class="where-label">🏛 {{ where }}</span>
+        <span class="day-count">{{ items | list | length }} items</span>
+      </summary>
+      <ul class="items">
+        {% for p in items %}
+          {% include "_plan_item.html" %}
+        {% endfor %}
+      </ul>
+    </details>
+  {% endfor %}
+  {% if without_where %}
+    <details class="where-section">
+      <summary>
+        <span class="where-label">— no room —</span>
+        <span class="day-count">{{ without_where | length }} items</span>
+      </summary>
+      <ul class="items">
+        {% for p in without_where %}
+          {% include "_plan_item.html" %}
+        {% endfor %}
+      </ul>
+    </details>
+  {% endif %}
+</div>
+{% endif %}
+
+{# Single view? render it without pills (already done above by 'views | length > 1') #}
+{% if views | length == 0 %}
+<ul class="items">
+  {% for p in plan %}
+    {% include "_plan_item.html" %}
+  {% endfor %}
 </ul>
+{% endif %}

@@ -1,0 +1,22 @@
+{# Single PlanItem rendering — included from each view in _plan.html. #}
+{% set time_changed = p.original_time and p.original_time != p.time %}
+{% set status_changed = p.original_status and p.original_status != p.status %}
+<li class="status-{{ p.status.value }}{% if time_changed or status_changed %} diffed{% endif %}">
+  <span class="time">
+    {% if time_changed %}<s class="orig-time">{{ p.original_time }}</s> →{% endif %}
+    {{ p.time }}
+  </span>
+  <span class="what">{{ p.what }}</span>
+  <span class="meta">
+    {% if p.where %}@{{ p.where }}{% endif %}
+    {% if p.where and p.who %} · {% endif %}
+    {% if p.who %}{{ p.who | map(attribute='value') | join(', ') }}{% endif %}
+    {% if p.track and not skip_track %} · 🎯 {{ p.track }}{% endif %}
+  </span>
+  <span class="badge">{{ p.status.value }}</span>
+  {% if status_changed %}<span class="badge orig-status">was: {{ p.original_status.value }}</span>{% endif %}
+  {% for tag in (p.tags or []) %}
+    <span class="badge tag-{{ tag }}">{{ tag }}</span>
+  {% endfor %}
+  {% if p.notes %}<div class="notes">↳ {{ p.notes }}</div>{% endif %}
+</li>

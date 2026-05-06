@@ -1,0 +1,23 @@
+<div class="event-switcher">
+  <form class="quick-form inline" hx-post="/ui/events/activate" hx-target="#qs-result" hx-swap="innerHTML">
+    <label>Active Event:</label>
+    <select name="event_id">
+      {% for e in events_summary %}
+      <option value="{{ e.id }}" {% if e.id == active_event_id %}selected{% endif %}>
+        [{{ e.mode }}] {{ e.name }} · {{ e.plan_count }}p / {{ e.risks_count }}r / {{ e.wishes_count }}w · {{ e.stakeholder_count }} stakeholders
+      </option>
+      {% endfor %}
+    </select>
+    <button>switch · go live</button>
+  </form>
+  <form class="quick-form inline" hx-post="/ui/events/create" hx-target="#qs-result" hx-swap="innerHTML">
+    <input type="text" name="name" placeholder="New event name" required>
+    <button>+ create empty</button>
+  </form>
+  {% if active_event_id %}
+  <form class="quick-form inline" hx-post="/ui/events/reset-schedule" hx-target="#qs-result" hx-swap="innerHTML"
+        hx-confirm="Plan-Items zurück auf Original-Zeiten/-Status, Outboxes leeren? (Stakeholders + Reality bleiben.)">
+    <button class="btn-soft">🔄 reset schedule</button>
+  </form>
+  {% endif %}
+</div>

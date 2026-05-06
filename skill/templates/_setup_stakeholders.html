@@ -1,0 +1,85 @@
+<div class="setup-panel">
+  <h3>👥 Add Stakeholders to <b>{{ event.name }}</b></h3>
+  <p class="setup-hint">
+    Zwei Pfade — wähle was zu deinen Daten passt:<br>
+    <b>Manuell pro Kategorie</b>: für jede Kategorie eine Liste eintippen (eine Person pro Zeile).<br>
+    <b>Bulk-Import</b>: Datei hochladen oder Liste einfügen (CSV, Excel-Paste, oder freier Text — LLM extrahiert).
+  </p>
+
+  <!-- ============= MANUAL ============= -->
+  <details class="stakeholder-mode" open>
+    <summary><span class="mode-label">📝 Manuell pro Kategorie</span></summary>
+
+    <form class="stk-manual-form"
+          hx-post="/ui/stakeholders/manual"
+          hx-target="#stakeholder-result"
+          hx-swap="innerHTML">
+      <p class="setup-hint">
+        Pro Zeile: <code>Name &lt;email@x.com&gt; — Notiz</code> · Email + Notiz optional.
+      </p>
+
+      {% set default_categories = [
+        ('Speakers',          '🎤', 'Dr. Smith <smith@uni.edu> — Topic: AI Ethics'),
+        ('Volunteers',        '🤝', 'Anna\nBen <ben@example.org>'),
+        ('AV / Stage Tech',   '🎬', ''),
+        ('Catering',          '🍽️', ''),
+        ('Garderobe',         '👕', ''),
+        ('Security',          '🛡️', ''),
+        ('Medical',           '🏥', ''),
+        ('Organizer',         '🎯', ''),
+      ] %}
+      {% for cat, icon, hint in default_categories %}
+      <div class="stk-cat-row">
+        <label>{{ icon }} {{ cat }}</label>
+        <textarea name="cat::{{ cat }}" rows="2" placeholder="{{ hint }}"></textarea>
+      </div>
+      {% endfor %}
+
+      <div class="stk-cat-row">
+        <label>➕ Custom</label>
+        <div class="stk-custom-inputs">
+          <input type="text" name="custom_category_name" placeholder="z.B. 'Übersetzer', 'Driver', 'Booth-Crew'">
+          <textarea name="cat::__custom__" rows="2" placeholder="Eine Person pro Zeile"></textarea>
+        </div>
+      </div>
+
+      <div class="setup-actions">
+        <button type="submit" hx-disabled-elt="this">Add Stakeholders</button>
+      </div>
+    </form>
+  </details>
+
+  <!-- ============= BULK ============= -->
+  <details class="stakeholder-mode">
+    <summary><span class="mode-label">📥 Bulk-Import (Datei/Paste, LLM extrahiert)</span></summary>
+
+    <form class="stk-bulk-form"
+          hx-post="/ui/stakeholders/extract"
+          hx-target="#stakeholder-extract-preview"
+          hx-swap="innerHTML"
+          hx-encoding="multipart/form-data"
+          hx-disabled-elt="find button"
+          hx-indicator="#stk-extract-spinner">
+      <p class="setup-hint">
+        CSV mit Header (Name, Email, Category, Area, Notes) wird sofort geparsed.<br>
+        Plain-Text / freie Liste / kopierter Excel-Text geht zum LLM (~30–60 s).
+      </p>
+
+      <label>Paste here:</label>
+      <textarea name="text" rows="6"
+                placeholder="Name, Email, Category&#10;Anna Becker, anna@x.com, Speaker&#10;Ben Cohen, ben@y.org, Volunteer"></textarea>
+
+      <label>Or upload file:</label>
+      <input type="file" name="upload" accept=".csv,.tsv,.txt,.md">
+
+      <div class="setup-actions">
+        <button type="submit">Extract &amp; Review</button>
+        <span id="stk-extract-spinner" class="htmx-indicator">⏳ extrahiere…</span>
+      </div>
+    </form>
+
+    <div id="stakeholder-extract-preview"></div>
+  </details>
+
+  <div id="stakeholder-result" class="setup-result"></div>
+</div>

@@ -1,0 +1,35 @@
+<div class="setup-panel">
+  <h3>📥 Import sources into active event</h3>
+  <p class="setup-hint">
+    URL = Auto-Crawl: holt die Hauptseite, scannt Navigation, folgt automatisch
+    bis ~8 Subseiten (Schedule, Programm, Speaker, Sprecher, Sessions — DE+EN).<br>
+    Paste = freier Text. YAML = Direktimport im event-config Format.<br>
+    Ein einzelner LLM-Call (~30–90s) reconciled alles. YAML-only ist sofort.<br>
+    Importiert in das aktive Event <b>{{ event.name }}</b>
+    <small>[{{ event.mode or '?' }}]</small> — bestehende Plan/Risks/Wishes werden ersetzt.
+  </p>
+
+  <form class="setup-form"
+        hx-post="/ui/setup/import"
+        hx-target="#setup-result"
+        hx-swap="innerHTML"
+        hx-disabled-elt="find button"
+        hx-indicator="#setup-spinner, #setup-result"
+        hx-on::before-request="document.getElementById('setup-result').innerHTML='<div class=&quot;qs-result running&quot;>⏳ Import läuft… URLs werden gefetcht und gecrawlt, dann ein LLM-Call. Insgesamt 40–110 s. Der Button bleibt grau bis fertig.</div>'">
+    <label>URL <small>(eine pro Zeile, optional)</small></label>
+    <textarea name="urls" rows="2" placeholder="https://..."></textarea>
+
+    <label>Paste <small>(Schedule-Email, Briefing, freier Text)</small></label>
+    <textarea name="paste" rows="6" placeholder="z.B. 'Team-Retreat Day 1: 9:00 keynote, 11:00 breakouts, 13:00 lunch...'"></textarea>
+
+    <label>YAML <small>(event-config Format)</small></label>
+    <textarea name="yaml_text" rows="4" placeholder="event:&#10;  name: ..."></textarea>
+
+    <div class="setup-actions">
+      <button>Import &amp; Synthesize</button>
+      <span id="setup-spinner" class="htmx-indicator">⏳ läuft…</span>
+    </div>
+  </form>
+
+  <div id="setup-result" class="setup-result"></div>
+</div>

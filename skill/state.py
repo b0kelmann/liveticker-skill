@@ -1,6 +1,6 @@
 """LiveTicker state stores — the agent's worldview.
 
-Six explicit knowledge stores that together form the input-fusion architecture:
+Per-event, six explicit knowledge stores form the input-fusion architecture:
 
 - PlanState:        what is *intended* to happen (the schedule)
 - RealityState:     what is *actually* happening (incoming signals)
@@ -10,10 +10,13 @@ Six explicit knowledge stores that together form the input-fusion architecture:
                     wishes are at risk?") alongside risk-threshold detection
 - StakeholderGraph: who's at the event and in what role
 
-The reasoning loop diffs Reality against Plan, scored against Risks and Wishes,
-and routes outputs to relevant Stakeholders. Making these stores explicit (vs.
-one big context blob) is what keeps the agent's reasoning explainable rather
-than a black box.
+These six live inside an EventBundle. The module-level STATE is an EventStore
+container that holds N events and tracks which one is currently `live`. The
+reasoning loop only runs against the live event; events in `setup` mode accept
+imports and edits but no incoming signals (decision #22).
+
+Making each store explicit (vs. one big context blob) is what keeps the
+agent's reasoning explainable rather than a black box.
 
 In-memory only — boot-time seed comes from event-config.yaml (loader in
 skill.config).
@@ -45,9 +48,12 @@ class Role(str, Enum):
 
 class Stakeholder(BaseModel):
     id: str = Field(default_factory=lambda: uuid.uuid4().hex[:8])
-    role: Role
+    role: Role  # abstract coordination role (drives reasoning fanout)
     area: Optional[str] = None
     display_name: Optional[str] = None
+    category: Optional[str] = None  # human-readable function ("Garderobe", "Catering Crew")
+    email: Optional[str] = None
+    notes: Optional[str] = None  # free-form: speaker topic, "vegan only", etc.
     joined_at: float = Field(default_factory=time.time)
 
 
@@ -65,13 +71,18 @@ class StakeholderGraph:
         return self._by_id.get(id)
 
     def list(
-        self, role: Optional[Role] = None, area: Optional[str] = None
+        self,
+        role: Optional[Role] = None,
+        area: Optional[str] = None,
+        category: Optional[str] = None,
     ) -> list[Stakeholder]:
         items = list(self._by_id.values())
         if role:
             items = [s for s in items if s.role == role]
         if area:
             items = [s for s in items if s.area == area]
+        if category:
+            items = [s for s in items if s.category == category]
         return items
 
     def count_by_role(self) -> dict[str, int]:
@@ -93,12 +104,18 @@ class PlanItemStatus(str, Enum):
 
 class PlanItem(BaseModel):
     id: str = Field(default_factory=lambda: uuid.uuid4().hex[:8])
-    time: str  # "19:30" or ISO string — free-form, demo only
+    day: Optional[str] = None       # "Day 1" / "2026-05-04" / "Mon" — set for multi-day events
+    time: str                        # "19:30" or ISO string — free-form
     what: str
     who: list[Role] = Field(default_factory=list)
-    where: Optional[str] = None
+    where: Optional[str] = None      # physical room/stage ("Master Stage", "Chapel")
+    track: Optional[str] = None      # thematic schiene ("Agentic AI Summit") — distinct from where
+    tags: list[str] = Field(default_factory=list)  # free-form labels ("keynote","workshop","panel")
     status: PlanItemStatus = PlanItemStatus.PLANNED
     notes: Optional[str] = None
+    # Snapshot fields, frozen on go-live so the UI can show "geplant 14:00 → ist 14:30 [delayed]".
+    original_time: Optional[str] = None
+    original_status: Optional[PlanItemStatus] = None
 
 
 class PlanState:
@@ -129,7 +146,10 @@ class PlanState:
         return item
 
     def list(self) -> list[PlanItem]:
-        return sorted(self._items.values(), key=lambda x: x.time)
+        return sorted(
+            self._items.values(),
+            key=lambda x: (x.day or "", x.time, x.track or "", x.where or ""),
+        )
 
 
 # ---------- Reality ----------
@@ -281,7 +301,7 @@ AUDIT_PATH = Path(__file__).resolve().parent.parent / "audit.log"
 def audit(event: str, **fields) -> None:
     """Append a single JSON line to audit.log.
 
-    Rendered live on the jury dashboard so the reasoning chain is visible
+    Rendered live on the dashboard so the reasoning chain is visible
     rather than implied. Manifest declares audit.enabled = true.
     """
     record = {"ts": time.time(), "event": event, **fields}
@@ -289,22 +309,53 @@ def audit(event: str, **fields) -> None:
         f.write(json.dumps(record, default=str) + "\n")
 
 
-# ---------- Bundle (the agent's worldview) ----------
+# ---------- Event Bundle + Multi-Event Store (Decision #22) ----------
+
+class EventMode(str, Enum):
+    SETUP = "setup"   # being imported / edited; no signal ingestion
+    LIVE = "live"     # the agent is coordinating this one
+
 
 @dataclass
-class StateBundle:
+class EventBundle:
+    """One event's worldview. The agent holds N of these; exactly one is live."""
+
+    id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
+    name: str = "Unnamed event"
+    mode: EventMode = EventMode.SETUP
+    scenario: str = ""
+    countdown_to: str = ""
+    areas: list[str] = field(default_factory=list)
+    # LLM-suggested ways to render the Plan in this event ("by_day", "by_track",
+    # "by_where", "chronological"). UI shows a pill-bar with these options.
+    view_modes: list[str] = field(default_factory=lambda: ["chronological"])
+
     plan: PlanState = field(default_factory=PlanState)
     reality: RealityState = field(default_factory=RealityState)
     risks: RiskCatalog = field(default_factory=RiskCatalog)
     goals: Goals = field(default_factory=Goals)
     wishes: Wishes = field(default_factory=Wishes)
     stakeholders: StakeholderGraph = field(default_factory=StakeholderGraph)
+
+    # Per-event runtime tracked by the reasoning loop
+    triggered_risk_ids: set[str] = field(default_factory=set)
+    at_risk_wish_ids: set[str] = field(default_factory=set)
+    outbox: dict[str, list[dict]] = field(default_factory=dict)  # stakeholder_id → messages
+
     started_at: float = field(default_factory=time.time)
+    # Lifecycle stamps: started_at_live is set ONCE on the first go-live transition;
+    # Plan-snapshot fields on PlanItem are frozen at the same moment so subsequent
+    # status changes by the reasoning loop can be diff-rendered against the original.
+    started_at_live: Optional[float] = None
 
     def snapshot(self) -> dict:
         """Serialize the whole worldview — for dashboards and LLM prompts."""
         return {
+            "event_id": self.id,
+            "event_name": self.name,
+            "event_mode": self.mode.value,
             "started_at": self.started_at,
+            "view_modes": list(self.view_modes),
             "plan": [i.model_dump() for i in self.plan.list()],
             "reality_recent": [s.model_dump() for s in self.reality.recent(seconds=300)],
             "risks": [r.model_dump() for r in self.risks.list()],
@@ -313,7 +364,120 @@ class StateBundle:
             "stakeholder_counts": self.stakeholders.count_by_role(),
         }
 
+    def reset_definition(self) -> None:
+        """Wipe the editable definition stores (Plan/Risks/Goals/Wishes).
 
-# Module-level singleton — the running event's state.
-# All HTTP handlers and the reasoning loop share this one bundle.
-STATE = StateBundle()
+        Stakeholders, Reality, runtime tracking and event metadata are
+        preserved. Used by /events/{id}/import to re-seed cleanly.
+        """
+        self.plan = PlanState()
+        self.risks = RiskCatalog()
+        self.goals = Goals()
+        self.wishes = Wishes()
+        # Re-import means a new schedule, so any frozen snapshot is now stale.
+        self.started_at_live = None
+
+    def snapshot_plan(self) -> None:
+        """Freeze original_time/original_status on each plan item.
+
+        Called on the first transition to LIVE so that subsequent status
+        changes by the reasoning loop can be diff-rendered ('geplant 14:00 →
+        ist 14:30 [delayed]'). Idempotent — already-snapshotted items keep
+        their first-frozen values.
+        """
+        for p in self.plan.list():
+            if p.original_time is None:
+                p.original_time = p.time
+            if p.original_status is None:
+                p.original_status = p.status
+
+    def reset_schedule(self) -> None:
+        """Soft reset: restore plan items to their snapshot, clear runtime.
+
+        Stakeholders + Reality + event metadata stay. Use after a demo run
+        when you want to replay against the same setup.
+        """
+        for p in self.plan.list():
+            if p.original_time is not None:
+                p.time = p.original_time
+            if p.original_status is not None:
+                p.status = p.original_status
+            p.notes = None
+        self.outbox.clear()
+        self.triggered_risk_ids.clear()
+        self.at_risk_wish_ids.clear()
+
+
+class EventStore:
+    """Holds N events; tracks which one is `live` (Decision #22).
+
+    Exactly one event can be `live` at a time. Activating a new event demotes
+    the previous live one back to `setup`. Reasoning + signal endpoints route
+    through `current()`; if no event is live, those endpoints should 409.
+    """
+
+    def __init__(self) -> None:
+        self._events: dict[str, EventBundle] = {}
+        self._active_id: Optional[str] = None
+
+    def create(
+        self,
+        name: str,
+        mode: EventMode = EventMode.SETUP,
+        scenario: str = "",
+        countdown_to: str = "",
+        areas: Optional[list[str]] = None,
+    ) -> EventBundle:
+        ev = EventBundle(
+            name=name,
+            mode=mode,
+            scenario=scenario,
+            countdown_to=countdown_to,
+            areas=list(areas or []),
+        )
+        self._events[ev.id] = ev
+        if mode == EventMode.LIVE:
+            self.activate(ev.id)
+        return ev
+
+    def get(self, id: str) -> Optional[EventBundle]:
+        return self._events.get(id)
+
+    def list(self) -> list[EventBundle]:
+        return list(self._events.values())
+
+    def remove(self, id: str) -> bool:
+        if id == self._active_id:
+            self._active_id = None
+        return self._events.pop(id, None) is not None
+
+    def activate(self, id: str) -> Optional[EventBundle]:
+        ev = self._events.get(id)
+        if not ev:
+            return None
+        # Demote previous live event back to setup
+        if self._active_id and self._active_id != id:
+            prev = self._events.get(self._active_id)
+            if prev is not None:
+                prev.mode = EventMode.SETUP
+        self._active_id = id
+        # First-time go-live: stamp + snapshot the plan for diff-rendering.
+        if ev.mode != EventMode.LIVE:
+            ev.snapshot_plan()
+            if ev.started_at_live is None:
+                ev.started_at_live = time.time()
+        ev.mode = EventMode.LIVE
+        return ev
+
+    def current(self) -> Optional[EventBundle]:
+        if self._active_id:
+            return self._events.get(self._active_id)
+        return None
+
+    @property
+    def active_id(self) -> Optional[str]:
+        return self._active_id
+
+
+# Module-level singleton — all events the agent knows about.
+STATE = EventStore()
