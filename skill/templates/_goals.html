@@ -1,0 +1,9 @@
+<h2>🎯 Goals</h2>
+<ul class="items">
+{% for g in goals %}
+  <li>
+    <span class="what">{{ g.text }}</span>
+    <div class="meta">drivers: {{ g.driver_for | map(attribute='value') | join(', ') }}</div>
+  </li>
+{% endfor %}
+</ul>

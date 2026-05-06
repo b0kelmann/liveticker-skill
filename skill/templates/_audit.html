@@ -1,0 +1,14 @@
+<h2>📜 Audit (LLM reasoning trail)</h2>
+{% if audit %}
+<ul class="audit-tail">
+{% for a in audit %}
+  <li class="event-{{ a.event }}">
+    <span class="age">{{ a.age }}</span>
+    <span class="event">{{ a.event }}</span>
+    <span class="detail">{{ a.detail }}</span>
+  </li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="empty">audit log leer. Sobald jemand /post,/signal,/ask schickt füllt es sich.</p>
+{% endif %}

@@ -1,0 +1,143 @@
+# LiveTicker default event seed — generic festival demo.
+# Read by skill.config.load_event_config() on FastAPI startup.
+# Replace the contents of this file (or upload via the Setup-Phase, once that
+# ships) to drive the agent against your own event.
+
+event:
+  name: "Sample Festival — Headliner Slot Demo"
+  scenario: "minutes before the headliner takes the main stage"
+  countdown_to: "headliner walk-on"
+  areas:
+    - main_stage
+    - second_stage
+    - food_court
+    - medical_tent
+    - backstage
+
+plan:
+  - time: "18:30"
+    what: "Doors open at front pit"
+    who: [security]
+    where: main_stage
+  - time: "19:00"
+    what: "Opening act wraps"
+    who: [stage_tech, artist]
+    where: main_stage
+  - time: "19:15"
+    what: "Stage changeover for headliner"
+    who: [stage_tech]
+    where: main_stage
+  - time: "19:30"
+    what: "Headliner walk-on"
+    who: [artist, stage_tech]
+    where: main_stage
+  - time: "20:45"
+    what: "Headliner set ends"
+    who: [artist, stage_tech]
+    where: main_stage
+
+risks:
+  - id: crowd-crush
+    name: "Crowd Crush"
+    description: "Astroworld-pattern front-of-stage densification"
+    pattern: "Multiple fan signals about crowding, pressure, or being unable to move in the same area"
+    threshold: ">=3 fan signals within 60s about crowding in the same area"
+    fanout: [security, medic, stage_tech]
+    severity: critical
+
+  - id: mic-failure
+    name: "Mic Failure"
+    description: "Performer mic dies onstage"
+    pattern: "Artist or stage_tech reports mic out, or fans report no audio"
+    threshold: ">=2 signals within 30s about audio/mic issues from the same area"
+    fanout: [stage_tech, artist]
+    severity: high
+
+  - id: weather-drift
+    name: "Weather Drift"
+    description: "Rain or storm risks evacuation"
+    pattern: "Multiple weather-related signals (rain, wind, lightning) from any role"
+    threshold: ">=2 weather mentions, or any lightning mention"
+    fanout: [organizer, security, stage_tech]
+    severity: high
+
+  - id: foodtruck-overload
+    name: "Foodtruck Overload"
+    description: "Long queues or shortages disrupt crowd flow"
+    pattern: "Vendor or fan signals about queues, shortages, or wait times in food_court"
+    threshold: ">=3 signals about queues or shortages within 2 min"
+    fanout: [vendor, organizer]
+    severity: medium
+
+  - id: headliner-delay
+    name: "Headliner Delay"
+    description: "Headliner not yet onstage as scheduled"
+    pattern: "Time past planned headliner start without status=in_progress, or artist signal of delay"
+    threshold: "Headliner walk-on >5 min past planned time with status not in_progress"
+    fanout: [organizer, stage_tech, artist]
+    severity: medium
+
+  - id: missing-person-cluster
+    name: "Missing Person Cluster"
+    description: "Multiple reports of separated friends or family"
+    pattern: "Multiple fan signals or asks about lost contacts in the same area"
+    threshold: ">=3 missing-person mentions within 5 min"
+    fanout: [security, organizer]
+    severity: medium
+
+  - id: fire-route-blocked
+    name: "Fire Route Blocked"
+    description: "Safety route obstructed"
+    pattern: "Any signal about blocked emergency exits, fire lanes, or evacuation paths"
+    threshold: "Any signal mentioning blocked fire route or emergency exit"
+    fanout: [security, organizer]
+    severity: high
+
+goals:
+  - text: "No crowd-crush incidents"
+    driver_for: [security, organizer]
+  - text: "Medical response <60s from signal to medic dispatch"
+    driver_for: [medic, organizer]
+  - text: "Headliner starts on time (within +10 min)"
+    driver_for: [organizer, stage_tech, artist]
+  - text: "Fans report enjoyment >4/5"
+    driver_for: [organizer, vendor]
+
+# Outcome-positive reasoning axis: per-role wishes the agent watches for
+# violations of, in parallel to risk-threshold detection.
+wishes:
+  - text: "Headliner doesn't run so late I miss the last train home"
+    holder_roles: [fan]
+  - text: "Clear sightlines and audible sound from where I'm standing"
+    holder_roles: [fan]
+  - text: "Functioning AV and stage tech ready before walk-on"
+    holder_roles: [artist, stage_tech]
+  - text: "Crowd stays engaged through to the encore"
+    holder_roles: [artist]
+  - text: "Steady foot traffic without choke points blocking access"
+    holder_roles: [vendor]
+  - text: "No emergency pages during my off-shift window"
+    holder_roles: [security, medic]
+  - text: "Event ends without an incident I'll have to explain tomorrow"
+    holder_roles: [organizer]
+
+stakeholders:
+  display_names:
+    fan: "Fan / Festival-goer"
+    artist: "Artist / Crew"
+    stage_tech: "Stage Tech / Lighting"
+    security: "Security / Crowd Control"
+    medic: "Medic"
+    vendor: "Foodtruck / Vendor"
+    organizer: "Organizer"
+
+  # Target distribution for ~30 attendees (percent, sums to 100).
+  # Frontend uses this to auto-assign roles on QR-scan.
+  distribution:
+    fan: 50
+    artist: 13
+    stage_tech: 10
+    security: 10
+    medic: 7
+    vendor: 7
+    organizer: 3

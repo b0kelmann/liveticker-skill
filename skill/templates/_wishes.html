@@ -1,0 +1,12 @@
+<h2>💭 Wishes</h2>
+<ul class="items">
+{% for w in wishes %}
+  <li class="wish {% if w.id in at_risk_wishes %}at-risk{% endif %}">
+    <span class="what">{{ w.text }}</span>
+    {% if w.id in at_risk_wishes %}<span class="badge at-risk">⚠ at risk</span>{% endif %}
+    <div class="meta">held by: {{ w.holder_roles | map(attribute='value') | join(', ') }}</div>
+  </li>
+{% else %}
+  <li class="empty">no wishes loaded — check event-config.yaml</li>
+{% endfor %}
+</ul>

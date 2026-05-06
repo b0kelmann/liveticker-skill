@@ -1,0 +1,17 @@
+<h2>👥 Stakeholders</h2>
+{% if stakeholders %}
+<ul class="items">
+{% for s in stakeholders %}
+  <li class="role-{{ s.role.value }}">
+    <span class="badge role-{{ s.role.value }}">{{ s.role.value }}</span>
+    <span class="what">{{ s.display_name or s.id }}</span>
+    <span class="meta">@{{ s.area or '?' }}</span>
+    {% if inbox_counts.get(s.id, 0) > 0 %}
+      <span class="badge inbox">📨 {{ inbox_counts[s.id] }}</span>
+    {% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="empty">niemand da. unten "Seed: 3 Fans + …" klicken.</p>
+{% endif %}

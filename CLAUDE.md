@@ -1,78 +1,64 @@
-# LiveTicker — Hackathon Working Context
+# LiveTicker — Working Context
 
-> **For a fresh Claude Code session**: read this top-to-bottom before doing anything. It contains every settled decision, the current build state, and the next-action plan. The pre-existing README.md is the public-facing pitch; this file is the internal working contract.
+> **For a fresh Claude Code session**: read this top-to-bottom before doing anything. It contains every settled decision, the current build state, and the next-action sketch. The pre-existing README.md is the public-facing pitch; this file is the internal working contract.
+
+> **Status as of 2026-05-06:**
+> - **Hackathon path is closed.** Tom missed the GOSIM live-demo cutoff and explicitly opted out of the submission-video path too — no Z.AI Innovation Award attempt, no stage demo, no submission to `create.gosim.org/submit`.
+> - **Tool continues as a generic event-coordination tool**, not GOSIM-specific. Tom's framing: *"am Ende soll man das Tool auf jedes X beliebige Event anwenden können"*. The Setup-Phase becomes the heart: multiple source types (URL, files, manual) → LLM builds the source of truth.
+> - **No deadline pressure.** This is now a personal tool / portfolio project. Build pace and direction are Tom's call.
+> - **GOSIM-specific content** (Master Stage delay cascade, hackathon Day 1 schedule seed, fan/speaker/vendor wishes for that scenario) is **demoted from product-definition to example-event-seed**. Useful as a worked example, not the mission.
 
 ---
 
 ## TL;DR
 
-LiveTicker is an **OpenClaw skill** for **real-time coordination at live events**. Solo project by **Tom Bockisch (b0kelmann)** for the **GOSIM Agentic Hackathon 2026 (Paris, OpenClaw track)**, runtime model **GLM-5.1 via RouteTokens** — targeting the **Z.AI Innovation Award ($2,000)**.
+LiveTicker is an event-coordination agent. It maintains explicit knowledge stores (Plan, Reality, Risks, Goals, Stakeholders, Wishes) and reasons across two axes — *which risks crossed threshold?* AND *whose wishes are at risk?* — to fan out targeted updates to the right stakeholders.
 
-The architecture is **input-fusion-based**: an LLM-backed agent maintains three explicit knowledge stores (Plan State, Reality State, Risk Catalog), enriched by Goals and a Stakeholder Graph. Audience-volunteered questions (`ticker.ask`) double as crowdsourced sensors — questions about reality reveal drifts in the plan.
+The vision: works for **any event** — conference, festival, wedding, meetup, hackathon. Setup is multi-source: paste a URL, drop schedule files, add catering PDFs, type free-form notes. The LLM reconciles these into a unified plan + risk catalog + per-role wish templates that the user reviews and edits before "go live".
 
-The demo is a **live audience-as-system** experience: ~30 jury/audience members scan a QR, get assigned festival roles (Tomorrowland-style, 19:30 before headliner), and play through a 2-minute scenario where their distributed signals trigger a **crowd-crush detection killer-moment** — Astroworld 2021 resonance.
+Original anchor: built during/around the GOSIM Agentic Hackathon 2026 as an OpenClaw skill (runtime: GLM-5.1 via RouteTokens). The skill-shape and OpenClaw manifest still exist in code; whether to keep that wrapper or strip it for a standalone product is an open question.
 
 Repo: `https://github.com/b0kelmann/liveticker-skill` · Public · Apache-2.0.
 
 ---
 
-## Hackathon Context
-
-- **Event**: GOSIM Agentic Hackathon 2026
-- **Venue**: Station F, Paris
-- **Track**: OpenClaw (Theme: "Claws and Octos / Ecosystem Co-creation")
-- **Team size**: solo (max 3 allowed; Tom decided to stay solo)
-- **Runtime model**: `glm-5.1` via RouteTokens (`https://api.r9s.ai/v1`)
-  - $40 in hackathon credits (Workspace: "Paris Hackathon")
-  - API key in `.env`, multi-account history (use the one tied to RouteTokens workspace `Paris Hackathon`)
-- **Judging** (5 dimensions × 20% each, 5-point scale, trimmed mean):
-  1. Innovation
-  2. Technical Depth
-  3. Completeness
-  4. Practicality
-  5. Presentation
-- **Demo format**: 3 min demo + 2 min Q&A, top 10 advance if >10 teams complete
-- **Submission required**: GitHub URL, 3-5 min demo video, README, OSI license — submitted at `create.gosim.org/submit`
-- **Awards** (top 5):
-  - Top 3 → Sponsor Awards ($2k each, sponsor matched to model used)
-  - 4th + 5th → GOSIM Awards ($1k + $1k Kimi tokens each)
-  - **Tom's path: top 3 → Z.AI Innovation Award (because he uses GLM)**
-
-### Disclosure obligations (Rules §5 + §13)
-
-The pre-existing skill skeleton (`skill/loops/broadcaster.py`, `skill/manifest.yaml`, `skill/server.py`, the README's structural pitch) was drafted with Claude Code BEFORE the hackathon. This is disclosed in `README.md` under "Pre-existing components and tools used". Build during the hackathon must be substantial — the disclosure section needs to grow as more code is built (with commit-history references).
-
----
-
 ## Settled Architectural Decisions (the grilling output)
 
-These were settled in a `/grill-me` session. Each has rationale that future sessions should respect unless the user explicitly revisits.
+These were settled in a `/grill-me` session. Each has rationale that future sessions should respect unless the user explicitly revisits. They are still load-bearing for the *generic-tool* version — only #11 and #14 changed status (from product-defining to example-only), and #7-bis / #12 went dormant with the demo-pressure gone.
 
-| # | Decision | Rationale |
-|---|---|---|
-| 1 | **Aha-moment**: dynamic event coordination (NOT smart router, NOT auto-broadcaster) | User reframed: real pain is propagating delays/changes across many stakeholders simultaneously |
-| 2 | **Tool type**: Coordination-Tool, not Schedule-Tool | Coordination is genuinely agentic; Schedule-tools already exist (Sched, Whova) |
-| 3 | **Agent form**: Voll Input-Fusion (NOT Output-Router only, NOT Hybrid) | User has 2 days; chose ambition. Implication: build state-model + multi-stream watcher |
-| 4 | **Architectural spine**: Plan State / Reality State / Risk Catalog (three explicit knowledge stores) | Makes agent reasoning explainable to jury. LLM does the diff, structure makes it not-a-black-box |
-| 5 | **Stakeholder Graph**: first-class citizen in the data model from Day 1 | Without it, no multi-stakeholder demo possible. Refactor later is half a day of pain |
-| 6 | **Input channels**: 3 separate endpoints (`ticker.post`, `ticker.signal`, `ticker.ask`) feeding shared Reality State | Aligned with manifest.yaml capabilities. Permissions per channel are clearer than unified inbox |
-| 7-bis | **Demo format**: Audience-as-System (E) — QR scan → role assigned → audience drives the demo with live inputs | Solves the "solo on stage doing puppet show" problem. ~30 attendees become live sensors |
-| 8 | **Goal granularity**: Stufe B (Mittel) — Goals + per-stakeholder-type Drivers in YAML, organizer can edit live in demo | Stufe A felt hardcoded (kills Innovation), Stufe C (live metrics dashboard) was +1 day cost not worth it |
-| 11 | **Event scenario**: Festival, Tomorrowland-style (Day 2, 19:30, before headliner) | Marathon felt too small/linear; Festival has natural multi-stakeholder vielfalt + Astroworld stakes |
-| 12 | **Time frame in demo**: Frozen Moment with countdown ("5 min before Anna...err, headliner arrives") | Drama via countdown + 1:1 mapping demo-time-to-story-time. No mental compression load on audience |
-| 13 | **Scale framing**: Big-Frame (claim Tomorrowland-real-scale numbers, demo a small subset) | Audience demo is necessarily small; framing big asserts production scope |
-| 14 | **Killer-Moment**: Crowd-Crush Detection (Astroworld pattern) — multi-stakeholder fanout from aggregated fan signals | Maximum stakes, maximum multi-channel demo, moral-resonance differentiates from competing demos |
+| # | Decision | Status | Rationale |
+|---|---|---|---|
+| 1 | **Aha-moment**: dynamic event coordination (NOT smart router, NOT auto-broadcaster) | active | Real pain is propagating delays/changes across many stakeholders simultaneously |
+| 2 | **Tool type**: Coordination-Tool, not Schedule-Tool | active | Coordination is genuinely agentic; Schedule-tools already exist (Sched, Whova) |
+| 3 | **Agent form**: Voll Input-Fusion (NOT Output-Router only, NOT Hybrid) | active | Build state-model + multi-stream watcher |
+| 4 | **Architectural spine**: Plan State / Reality State / Risk Catalog (three explicit knowledge stores) | active | Makes agent reasoning explainable. LLM does the diff, structure makes it not-a-black-box |
+| 5 | **Stakeholder Graph**: first-class citizen in the data model | active | Without it, no multi-stakeholder coordination possible |
+| 6 | **Input channels**: 3 separate endpoints (`ticker.post`, `ticker.signal`, `ticker.ask`) feeding shared Reality State | active | Aligned with manifest.yaml capabilities. Permissions per channel are clearer than unified inbox |
+| 7-bis | **Demo format**: Audience-as-System (E) — QR-driven roles | dormant | Was relevant for stage-demo; with no stage, parked. Can be revisited if/when there's an audience |
+| 8 | **Goal granularity**: Stufe B (Mittel) — Goals + per-stakeholder-type Drivers in YAML, editable live | active | Stufe A felt hardcoded, Stufe C (live metrics dashboard) was scope-bloat |
+| 11 | **Event scenario**: GOSIM Hackathon Day 1 (Tuesday) — Master Stage delay cascade | example-only | Was meta-resonant for the GOSIM jury; with no jury, this is just *one* example event the tool should work on |
+| 12 | **Time frame in demo**: Frozen Moment with countdown | dormant | Demo-specific; relevant if/when a demo is recorded |
+| 13 | **Scale framing**: Real-scale (use real numbers from the example event, not fictional inflation) | active | Real numbers > fictional inflation regardless of which event |
+| 14 | **Killer-Moment**: Master Stage Delay Cascade | example-only | Genuine demo of the wishes-axis, but specific to a conference scenario; weddings/festivals have other killer-moments |
+| 15 | **Wishes** as 6th knowledge store | active | Outcome-positive reasoning axis ("wishes at risk?") alongside defensive ("risk threshold met?") |
+| 16 | **Demo is 2-part: Setup + Live** | promoted to product | The Setup-Phase is now central to the *product*, not just the demo. Multi-source ingestion is the hard interesting part of the generic version |
+| 17 | **Source types for v1**: URL fetch + plain-text paste + YAML upload. PDF / CSV / images deferred. *(NEW 2026-05-06)* | active | URL was Tom's primary idea. Plain-text covers the realistic case (schedule email, Slack message, transcribed briefing). YAML upload is near-free since the internal format already is YAML. PDF/CSV/images add dependencies + parsing complexity without a concrete need yet. |
+| 18 | **Source reconciliation**: one LLM call ingests all provided sources. LLM merges and returns plan items with per-item confidence + explicit `conflict_with` flags. Setup-UI surfaces conflicts; user resolves manually. *(NEW 2026-05-06)* | active | LLM is good at this kind of reconciliation; no Python merge code. Priority-order alternative (URL > File > Manual) silently auto-resolves and hides conflicts from the user — worse, since the user reviews everything anyway. |
+| 19 | **Per-event-type configuration**: 3 built-in presets (Conference, Wedding, Festival) + "Custom blank" + LLM-suggested from source. *(NEW 2026-05-06)* | active | Presets give sane stakeholder roles + wish templates. Custom-blank covers everything else. The setup LLM call also classifies event-type and proposes roles + wishes from the extracted plan; user can accept the preset or override. **Implication**: the hardcoded `Role` enum in `state.py` must become configurable (per-event-type role lists) — this is the only non-trivial code change behind this decision. |
+| 20 | **Skill wrapper vs. standalone**: skill-shape stays, but as optional. Standalone FastAPI server is the primary use case. *(NEW 2026-05-06)* | active | `manifest.yaml` is 5 lines, no maintenance overhead. Door stays open if anyone wants to use the tool inside an OpenClaw setup. README rewrite makes "standalone server" the primary positioning, "OpenClaw skill" a bonus. |
+| 21 | **End-user frontends**: NO in v1. Admin UI is the only touchpoint. *(NEW 2026-05-06)* | active | Per-role frontends (speaker view, attendee view) are their own world: auth, push notifications, mobile, QR onboarding. First prove the coordination model with Wishes works via Admin UI + the existing `/inbox/{id}` endpoint. Frontend question is tagged open for v2. |
 
-### Decisions still open
+### Decisions previously open, now closed by the pivot
 
-| Topic | Status | Recommended default if unresolved |
-|---|---|---|
-| Frontend tech stack | TBD | Plain HTML + vanilla JS, served by FastAPI; alternative: Telegram Bot |
-| Hosting for live demo | TBD | ngrok (works but venue WiFi risk); fallback Vercel/Railway |
-| Backstage-Plant inputs (yes/no) | TBD | Yes, as safety net — Tom backstage with extra device. ~3 plants reserved for killer-moment trigger if audience hesitant |
-| Submission video tactics | TBD | Record AT desktop with Tom playing 4 roles in 4 browser windows (controlled "perfect run"); LIVE demo is audience-as-system bonus |
-| Festival Goals concrete content | TBD | Draft inline in `event-config.yaml`: ["no crowd-crush incidents", "<60s medical response", "headliner starts on time", "fans report enjoyment > 4/5"] |
-| Festival Risk Catalog seed | TBD | Draft 5-7 entries: crowd-crush pattern, mic-failure, weather-drift, foodtruck-overload, headliner-delay, missing-person-cluster, fire-route-blocked |
+| Topic | Resolution |
+|---|---|
+| Hosting for live demo | n/a — no live demo |
+| Audience-as-System in Live-Phase | n/a — no stage |
+| Backstage-Plant inputs | n/a — no demo |
+| Submission video tactics | n/a — no submission |
+| GOSIM Day 1 schedule source | becomes "one example seed" — not blocking for the generic tool |
+| GOSIM-context Risk seed | same — example-only |
+| Wishes-per-role concrete content | becomes "one preset template" — generic version needs multiple presets |
 
 ---
 
@@ -81,141 +67,90 @@ These were settled in a `/grill-me` session. Each has rationale that future sess
 ### Repo structure
 ```
 liveticker-skill/
-├── README.md              ← public pitch (8.6 KB)
-├── CLAUDE.md              ← THIS FILE (working context)
+├── README.md              ← public pitch (8.6 KB) — written for hackathon framing, needs rewrite for generic version
+├── CLAUDE.md              ← THIS FILE
 ├── LICENSE                ← Apache-2.0
 ├── .gitignore             ← excludes .env, .venv, audit.log
 ├── .env.example           ← LLM provider config template
-├── .env                   ← LOCAL ONLY (gitignored), key for Paris Hackathon workspace
+├── .env                   ← LOCAL ONLY (gitignored), key for Paris Hackathon workspace (still works for now)
 ├── requirements.txt       ← fastapi, uvicorn, openai, python-dotenv, etc.
 ├── audit.log              ← LOCAL ONLY (gitignored), agent decisions log
 ├── docs/
 │   ├── demo.md            ← (placeholder, pre-existing)
-│   ├── demo-video.md      ← (placeholder, pre-existing)
-│   └── project-overview.html  ← visual project overview (built alongside this CLAUDE.md)
+│   ├── demo-video.md      ← (placeholder, pre-existing — defunct now)
+│   └── project-overview.html  ← visual project overview
 ├── examples/
 │   └── run_broadcaster_demo.py  ← end-to-end demo script (broadcaster + real LLM)
 └── skill/
     ├── __init__.py
     ├── manifest.yaml      ← OpenClaw skill capabilities (post/feed/ask/digest/recap)
-    ├── server.py          ← FastAPI server shell (4 KB, pre-existing)
+    ├── server.py          ← FastAPI server shell
     ├── llm.py             ← LLM adapter — wraps OpenAI SDK against R9S endpoint
     └── loops/
         ├── __init__.py
-        └── broadcaster.py ← Auto-Broadcaster reference loop (5.7 KB, pre-existing)
+        └── broadcaster.py ← Auto-Broadcaster reference loop
 ```
 
 ### Worktrees (4 total)
 ```
 liveticker-skill/                       [main]                       primary
 liveticker-skill-auto-broadcaster/      [loop/auto-broadcaster]      Loop 1 worktree
-liveticker-skill-bottleneck-detector/   [loop/bottleneck-detector]   Loop 2 worktree (empty so far)
-liveticker-skill-smart-helper/          [loop/smart-helper]          Loop 3 worktree (empty so far)
+liveticker-skill-bottleneck-detector/   [loop/bottleneck-detector]   Loop 2 worktree (empty)
+liveticker-skill-smart-helper/          [loop/smart-helper]          Loop 3 worktree (empty)
 ```
 
-All under `~/Documents/STARTPLATZ/04_Plattform-Software/Repos/`. Symlinks: each loop worktree has `.env` and `.venv` symlinked to the main worktree (single source of truth for credentials and dependencies).
+All under `~/Documents/STARTPLATZ/04_Plattform-Software/Repos/`. Symlinks: each loop worktree has `.env` and `.venv` symlinked to the main worktree.
 
-### What works end-to-end (verified)
-- LLM call: `python -c "from skill.llm import chat; print(chat([{'role':'user','content':'hi'}]))"` returns from GLM-5.1 ✓
-- Broadcaster demo: `python -m examples.run_broadcaster_demo` runs the broadcaster against the live LLM, with markdown-fence stripping fix and last-choice extraction (GLM returns reasoning at index 0, answer at last index) ✓
+### What works end-to-end (verified, as of 2026-05-06)
+- LLM call returns from GLM-5.1 ✓
+- Broadcaster demo runs against live LLM ✓
+- **5 explicit knowledge stores** in `skill/state.py`: Plan, Reality, Risk, Goals, Stakeholders + STATE singleton + audit() helper ✓
+- **3 input channels + read-side endpoints** in `skill/server.py`: `/join`, `/post`, `/signal`, `/ask`, `/state`, `/inbox/{id}`, `/config` ✓
+- **Reasoning loop** in `skill/reasoning.py`: LLM-backed Reality-vs-Plan diff, risk-threshold detection, role-specific fanout ✓
+- **`event-config.yaml` + loader** (`skill/config.py`) with FastAPI lifespan auto-seed on boot ✓ — currently still has the **old Tomorrowland seed**, slated for replacement (now: with *one preset of many*, not "the GOSIM seed")
+- **Killer-moment smoketest** `python -m examples.run_killer_moment_demo` — end-to-end, real LLM. ⚠️ Latency: 30–90s per LLM call.
+- **Self-test admin UI** at `GET /` (Jinja2 + HTMX, 2s auto-refresh): Plan/Risks/Goals/Reality/Stakeholders/Audit cards + quick-send forms + 3 demo presets. ✓
+- **Background-task LLM dispatch** for UI flows so it stays responsive. ✓
 
-### What does NOT yet exist (the build backlog)
-- 3 endpoints (`/post`, `/signal`, `/ask`) — only broadcaster's stubs exist
-- Plan State store
-- Reality State store
-- Risk Catalog (file + reasoning integration)
-- Goals + Stakeholder Taxonomy YAML
-- Reasoning loop (the watcher that diffs Reality vs Plan against Risks/Goals)
-- Output-Router (multi-channel fanout)
-- Web frontend (QR scan + role assignment + per-role input/output UI)
-- Bühnenscreen / Jury dashboard (live Plan/Reality/Risk view + audit log)
-- Deployment setup (ngrok or alternative)
-- Submission video
-- Demo skill drilling
+### Backlog (no priority order — Tom decides when/if)
 
----
+**Generic-tool work (the new direction):**
+- Multi-source Setup endpoint(s): URL-fetch, file-upload (PDF/CSV/YAML at minimum), free-form text-paste
+- LLM extraction pipeline: from any source → plan items + suggested risks + per-role wish templates
+- Source reconciliation: merge / priority / conflict-flagging when multiple sources contradict
+- Setup-UI: review/edit extracted plan, risks, wishes before "go live"
+- Wishes data model: `Wish` Pydantic + `Wishes` store + per-stakeholder-role wish templates
+- Wishes-aware reasoning extension: second axis "whose wishes are at risk?"
+- Per-event-type presets: at least conference + festival + wedding as seed templates
+- README rewrite: drop hackathon framing, position as generic event-coordination agent
 
-## Build Plan (settled in grilling Q15)
+**Carried over from the GOSIM-specific plan (now: example seed):**
+- Master-stage-delay scenario seed for the conference-event preset
+- Reschedule-cascade reasoning: when a plan item is delayed, cascade to downstream slots + identify wish conflicts
 
-### Day 1 — Backend Substance
-| Time | Action |
-|---|---|
-| now – 18:00 | Tech-stack decision + skeleton refactor: `skill/state.py` (Plan/Reality/Risk/Goals stores) |
-| 18:00 – 21:00 | 3 endpoints (`/post`, `/signal`, `/ask`) wired to reasoning loop |
-| 21:00 – 22:00 | `event-config.yaml` for Tomorrowland setting (goals, risks, taxonomy) |
-| 22:00 – 23:00 | Smoke-test: 5-10 manual inputs → expected outputs |
-| 23:00 | Hard stop. Sleep. |
-
-**Day 1 point of no return**: 22:00. If backend isn't running by then, drop features in this order:
-1. Goals live editor → static YAML only
-2. Risk Catalog editor → static YAML only
-3. Multi-channel fanout from 5 → 2 channels
-4. One of 3 endpoints (`/post` is most droppable)
-5. Stakeholder taxonomy from 7 → 3 roles
-
-### Day 2 — Frontend + Demo
-| Time | Action |
-|---|---|
-| 08:00 – 11:00 | Frontend: QR-scan landing → role assignment → input/output UI |
-| 11:00 – 12:00 | Bühnenscreen dashboard (Plan/Reality/Risk + audit log + countdown) |
-| 12:00 – 13:00 | Lunch + Discord post for real-user collection |
-| 13:00 – 15:00 | Submission video recording (Tom plays 4 roles in 4 browser windows) + collection runs in background |
-| 15:00 – 16:30 | Submission form: README polish, architecture diagram, video upload, GitHub URL submission |
-| 16:30 – 18:00 | Demo drill: 5× live 3-min pitch, backstage plant rehearsal, timing fix |
-| 18:00 – Demo | On-site setup, QR display, last-minute connectivity test |
-| Demo slot | 3 min live + 2 min Q&A |
-
-**Day 2 point of no return**: 15:00. If submission isn't out by then, deadline risk begins.
-
----
-
-## Demo Specification
-
-### Setup
-- Big stage screen showing: project name, countdown ("04:47 until headliner"), Plan State (schedule), Reality State (initially empty), Risk Catalog (5-7 pre-loaded), Goals
-- Big QR code on screen → audience scans
-- Audience devices show: assigned role, role context (situation), free-text input field, agent reply view, push notifications when fanned-out
-
-### Role distribution (for ~30 attendees)
-- **50% Fans / Festival-goers** (15 people, distributed across stages/areas)
-- **13% Artists / Crew** (4 people, including 1 headliner)
-- **10% Stage Tech / Lighting** (3 people, per stage)
-- **10% Security / Crowd Control** (3 people)
-- **7% Medics** (2 people)
-- **7% Foodtruck / Vendors** (2 people)
-- **3% Organizer** (1 person, "Sarah" stand-in for goal-authoring)
-
-### Beats (3 minutes)
-- T=0:00 – 0:30 — QR scan, role assignment, brief intro
-- T=0:30 – 1:00 — Audience tipping playful inputs (food, toilet, set-time questions)
-- T=1:00 – 1:30 — Tonal shift: 1-2 fans report "crowded near front" (organic or backstage plant)
-- T=1:30 – 1:50 — **Killer Moment**: agent aggregates crowd-crush signal → 5-channel fanout visible on stage screen (Security, Stage Manager, Medics, PA, Fans) → audit log shows full reasoning chain
-- T=1:50 – 2:30 — Resolution: "cluster defused" status, real audience members see notifications on their devices
-- T=2:30 – 3:00 — Architecture slide + closing pitch + GitHub URL
-
-### Backup plan if killer moment doesn't fire
-Backstage plant inputs (Tom on hidden device) — type 2-3 "fan crowded" signals to trigger threshold. Disclose to audience after demo if asked: "I had safety nets in case the audience didn't generate the right pattern in 2 min — but the system itself didn't know the difference, it processed each input on its merits".
+**Optional / dormant:**
+- Bühnenscreen variant of admin UI
+- Audience-as-System frontend (QR-landing → role-assignment) — only if Decision #7-bis becomes load-bearing again
 
 ---
 
 ## How to continue this work in a fresh Claude Code session
 
 1. Open this CLAUDE.md (Claude Code reads it automatically when you start in this repo).
-2. Confirm with the user where they are in the day plan (above).
+2. Read the Status block above first. Confirm with Tom whether the direction (generic tool, no deadline) is still current — pivots happen.
 3. Check current commit: `git log --oneline -5` and `git status`.
-4. Verify env: run the smoketest `python -c "from skill.llm import chat; print(chat([{'role':'user','content':'hi'}]))"` — if HTTP 402, the API key needs renewal (see Hackathon Context).
-5. Read the most recent change in `audit.log` (if exists) for context on last system run.
-6. **Default mode**: Tom is mode A (I code, he reviews). Don't ask him to type code unless he explicitly switches modes.
-7. **Don't re-grill** unless user explicitly asks. The 14 architectural decisions above are settled.
-8. **Always sync changes to all 4 worktrees** when committing to main: `for loop in auto-broadcaster bottleneck-detector smart-helper; do git -C ../liveticker-skill-$loop merge main --ff-only && git -C ../liveticker-skill-$loop push; done`
+4. Verify env: run the smoketest `python -c "from skill.llm import chat; print(chat([{'role':'user','content':'hi'}]))"` — if HTTP 402, the API key needs renewal.
+5. **Default mode**: Tom is mode A (Claude codes, he reviews). Don't ask him to type code unless he explicitly switches modes.
+6. **Don't re-grill** unless user explicitly asks. The architectural decisions above are settled (with #11/#14 now example-only and #7-bis/#12 dormant).
+7. **Always sync changes to all 4 worktrees** when committing to main: `for loop in auto-broadcaster bottleneck-detector smart-helper; do git -C ../liveticker-skill-$loop merge main --ff-only && git -C ../liveticker-skill-$loop push; done`
+8. **No deadline.** Don't manufacture urgency. Tom drives pace.
 
 ---
 
 ## Memory references (Tom's auto-memory)
 
-These memory files are relevant; future sessions should respect them:
 - `~/.claude/projects/-Users-tom/memory/MEMORY.md` — index
-- `project_startplatz_repos.md` — `liveticker-skill` is now listed there as a personal repo
+- `project_startplatz_repos.md` — `liveticker-skill` listed there as a personal repo
 - `feedback_check_memory_first.md` — read memory before fs scans
 
 ---
@@ -228,9 +163,17 @@ This file:      /Users/tom/Documents/STARTPLATZ/04_Plattform-Software/Repos/live
 README:         /Users/tom/Documents/STARTPLATZ/04_Plattform-Software/Repos/liveticker-skill/README.md
 .env:           /Users/tom/Documents/STARTPLATZ/04_Plattform-Software/Repos/liveticker-skill/.env
 LLM adapter:    /Users/tom/Documents/STARTPLATZ/04_Plattform-Software/Repos/liveticker-skill/skill/llm.py
-Broadcaster:    /Users/tom/Documents/STARTPLATZ/04_Plattform-Software/Repos/liveticker-skill/skill/loops/broadcaster.py
 Manifest:       /Users/tom/Documents/STARTPLATZ/04_Plattform-Software/Repos/liveticker-skill/skill/manifest.yaml
-Demo example:   /Users/tom/Documents/STARTPLATZ/04_Plattform-Software/Repos/liveticker-skill/examples/run_broadcaster_demo.py
 Visual overview: /Users/tom/Documents/STARTPLATZ/04_Plattform-Software/Repos/liveticker-skill/docs/project-overview.html
 GitHub:         https://github.com/b0kelmann/liveticker-skill
 ```
+
+---
+
+## Historical context (kept for completeness)
+
+The tool was originally built for the **GOSIM Agentic Hackathon 2026** (Paris, Station F), OpenClaw track, theme "Claws and Octos / Ecosystem Co-creation". Solo project by Tom Bockisch (b0kelmann). Runtime model: `glm-5.1` via RouteTokens (`https://api.r9s.ai/v1`), Workspace "Paris Hackathon", $40 in hackathon credits.
+
+Tom missed the live-demo cutoff and opted out of the submission-video path on 2026-05-06. The tool continues as a personal/portfolio project, generalized beyond the GOSIM context.
+
+Disclosure note: the pre-existing skill skeleton (`skill/loops/broadcaster.py`, `skill/manifest.yaml`, `skill/server.py`, the README's structural pitch) was drafted with Claude Code before the hackathon. The README still mentions this in "Pre-existing components and tools used"; that section can be simplified or removed when the README is rewritten for the generic version.

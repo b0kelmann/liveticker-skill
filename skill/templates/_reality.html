@@ -1,0 +1,16 @@
+<h2>📡 Reality (live signal stream)</h2>
+{% if signals %}
+<ul class="signals">
+{% for s in signals %}
+  <li class="ch-{{ s.channel.value }}">
+    <span class="badge ch-{{ s.channel.value }}">/{{ s.channel.value }}</span>
+    <span class="age">{{ s.age }}</span>
+    <span class="who">{{ s.source_role.value if s.source_role else 'anon' }} @ {{ s.area or '?' }}</span>
+    <div class="text">"{{ s.text }}"</div>
+    {% if s.interpretation %}<div class="interpretation">↳ {{ s.interpretation }}</div>{% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="empty">noch keine Signale. unten Form benutzen oder "Killer-Moment"-Preset klicken.</p>
+{% endif %}

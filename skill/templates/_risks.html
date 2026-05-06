@@ -1,0 +1,12 @@
+<h2>⚠️ Risks</h2>
+<ul class="items">
+{% for r in risks %}
+  <li class="severity-{{ r.severity.value }} {% if r.id in triggered_risks %}triggered{% endif %}">
+    <span class="badge sev-{{ r.severity.value }}">{{ r.severity.value }}</span>
+    <span class="what">{{ r.name }}</span>
+    {% if r.id in triggered_risks %}<span class="badge fired">🔥 fired</span>{% endif %}
+    <div class="meta">{{ r.threshold }}</div>
+    <div class="meta">→ fanout: {{ r.fanout | map(attribute='value') | join(', ') }}</div>
+  </li>
+{% endfor %}
+</ul>

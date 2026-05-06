@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LiveTicker — {{ event.name }}</title>
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>{{ event.name }}</h1>
+    <p class="scenario">{{ event.scenario }}</p>
+  </div>
+  <div class="status-pill" id="status-pill"
+       hx-get="/ui/header" hx-trigger="every 2s" hx-swap="innerHTML">
+    {% include "_header.html" %}
+  </div>
+</header>
+
+<main class="grid">
+
+  <section class="card plan" hx-get="/ui/plan" hx-trigger="every 2s" hx-swap="innerHTML">
+    {% include "_plan.html" %}
+  </section>
+
+  <section class="card reality" hx-get="/ui/reality" hx-trigger="every 2s" hx-swap="innerHTML">
+    {% include "_reality.html" %}
+  </section>
+
+  <section class="card risks" hx-get="/ui/risks" hx-trigger="every 2s" hx-swap="innerHTML">
+    {% include "_risks.html" %}
+  </section>
+
+  <section class="card stakeholders" hx-get="/ui/stakeholders" hx-trigger="every 2s" hx-swap="innerHTML">
+    {% include "_stakeholders.html" %}
+  </section>
+
+  <section class="card goals" hx-get="/ui/goals" hx-trigger="every 2s" hx-swap="innerHTML">
+    {% include "_goals.html" %}
+  </section>
+
+  <section class="card wishes" hx-get="/ui/wishes" hx-trigger="every 2s" hx-swap="innerHTML">
+    {% include "_wishes.html" %}
+  </section>
+
+  <section class="card audit" hx-get="/ui/audit" hx-trigger="every 2s" hx-swap="innerHTML">
+    {% include "_audit.html" %}
+  </section>
+
+</main>
+
+<footer class="quicksend">
+
+  <form class="quick-form" hx-post="/ui/join" hx-target="#qs-result" hx-swap="innerHTML">
+    <h3>+ Stakeholder joinen</h3>
+    <select name="role">
+      {% for r in roles %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+    </select>
+    <select name="area">
+      <option value="">— area —</option>
+      {% for a in areas %}<option value="{{ a }}">{{ a }}</option>{% endfor %}
+    </select>
+    <input type="text" name="display_name" placeholder="Name (optional)">
+    <button>join</button>
+  </form>
+
+  <form class="quick-form" hx-post="/ui/send" hx-target="#qs-result" hx-swap="innerHTML">
+    <h3>Signal senden</h3>
+    <select name="channel">
+      <option value="signal">/signal</option>
+      <option value="post">/post</option>
+      <option value="ask">/ask</option>
+    </select>
+    <select name="stakeholder_id">
+      <option value="">— als wer? —</option>
+      {% for s in stakeholders %}
+      <option value="{{ s.id }}">{{ s.role.value }} · {{ s.display_name or s.id }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="text" placeholder="Was passiert? z.B. 'crowded near front'" required>
+    <select name="area">
+      <option value="">— area —</option>
+      {% for a in areas %}<option value="{{ a }}">{{ a }}</option>{% endfor %}
+    </select>
+    <button>senden</button>
+  </form>
+
+  <div id="qs-result" class="qs-result"></div>
+
+  <div class="quick-presets">
+    <h3>Demo-Presets</h3>
+    <button hx-post="/ui/preset/seed-stakeholders" hx-target="#qs-result">Seed: 3 Fans + Security + Medic + Tech + Vendor</button>
+    <button hx-post="/ui/preset/crowd-crush" hx-target="#qs-result">Killer-Moment: 3 Crowd-Signals (langsam, 60–90s/Signal!)</button>
+    <button hx-post="/ui/preset/clear" hx-target="#qs-result"
+            hx-confirm="State komplett zurücksetzen (außer geladenes YAML-Seed)?">Reset Reality + Stakeholders</button>
+  </div>
+
+</footer>
+
+</body>
+</html>

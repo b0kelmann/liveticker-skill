@@ -1,0 +1,12 @@
+<h2>📅 Plan</h2>
+<ul class="items">
+{% for p in plan %}
+  <li class="status-{{ p.status.value }}">
+    <span class="time">{{ p.time }}</span>
+    <span class="what">{{ p.what }}</span>
+    <span class="meta">@{{ p.where or '?' }} · {{ p.who | map(attribute='value') | join(', ') }}</span>
+    <span class="badge">{{ p.status.value }}</span>
+    {% if p.notes %}<div class="notes">↳ {{ p.notes }}</div>{% endif %}
+  </li>
+{% endfor %}
+</ul>
