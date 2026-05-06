@@ -2,11 +2,31 @@
 
 > **For a fresh Claude Code session**: read this top-to-bottom before doing anything. It contains every settled decision, the current build state, and the next-action sketch. The pre-existing README.md is the public-facing pitch; this file is the internal working contract.
 
-> **Status as of 2026-05-06:**
-> - **Hackathon path is closed.** Tom missed the GOSIM live-demo cutoff and explicitly opted out of the submission-video path too — no Z.AI Innovation Award attempt, no stage demo, no submission to `create.gosim.org/submit`.
-> - **Tool continues as a generic event-coordination tool**, not GOSIM-specific. Tom's framing: *"am Ende soll man das Tool auf jedes X beliebige Event anwenden können"*. The Setup-Phase becomes the heart: multiple source types (URL, files, manual) → LLM builds the source of truth.
-> - **No deadline pressure.** This is now a personal tool / portfolio project. Build pace and direction are Tom's call.
-> - **GOSIM-specific content** (Master Stage delay cascade, hackathon Day 1 schedule seed, fan/speaker/vendor wishes for that scenario) is **demoted from product-definition to example-event-seed**. Useful as a worked example, not the mission.
+> **Status as of 2026-05-06 (end of session, Tom paused):**
+>
+> **What was built today (committed in `58ce221`)**:
+> - Multi-event container (`EventStore`), N events, exactly one `live` (Decision #22)
+> - Auto-crawl with DE+EN keyword discovery, dedup, lang-skip, two-tier scoring (Decision #23)
+> - Multi-day plan grouping with collapsable `<details>` per day (Decision #24)
+> - Event-aware plan views with view-pills (chronological/by_day/by_track/by_where) — LLM picks per event during import; UI persistence via localStorage (Decision #25)
+> - Stakeholder schema extended with `category`, `email`, `notes` + Setup-Wizard with two paths: manual per-category and bulk-import (CSV deterministic / plain-text via LLM, with review-before-confirm flow). Magic-link copy buttons per stakeholder.
+> - Event-Lifecycle Phase 2: `original_time`/`original_status` snapshot on first go-live, plan-diff rendering (`~~14:00~~ → 14:30 [delayed]`), `reset-schedule` button.
+> - End-organizer `docs/setup-guide.md` written (German, ~250 lines).
+>
+> **Where the tool stands honestly** — for a real "tomorrow we coordinate a live event" use case, **it is not yet ready**:
+> - ✅ Event setup is fully usable — create event, import schedule (URL/Paste/YAML), bulk-add stakeholders, magic-links generated, multi-event mode works, view-pills render the right grouping.
+> - ✅ Reasoning works when someone manually feeds the admin UI signals — LLM produces good plan-cascade updates, fanout to roles, plan-diff visible.
+> - ❌ **No time-awareness**: tool doesn't know it's 10:30 and slot X is running. Plan items stay on `planned` until someone manually triggers an update. **Phase 4 (background time-tick) not built.**
+> - ❌ **No stakeholder frontend**: the magic-links 404. Speakers/volunteers cannot self-serve — no inbox view, no "send signal" form for them. Only Tom-via-admin-UI can input. **Phase 3 (per-stakeholder UI at `/me/{id}`) not built.**
+> - ❌ **No persistence**: in-memory only, server restart = data loss.
+> - ❌ Mobile UX not optimized.
+>
+> **Direction Tom set for next session**: don't push to a real event yet. Phase 3 + Phase 4 are the unblocking work — together ~3–4 h. Phase 3 is the bigger multiplier (it's what turns the tool from "Tom's reasoning sandbox" into an actual coordination system); Phase 4 makes the live-display usable.
+>
+> **Earlier context** (still relevant):
+> - **Hackathon path is closed.** Tom missed the GOSIM live-demo cutoff and explicitly opted out of the submission-video path too. No deadline pressure.
+> - **Tool continues as a generic event-coordination tool**, not GOSIM-specific. Setup-phase is the product heart: multiple source types → LLM builds source of truth.
+> - **GOSIM-specific seed content** is demoted from product-definition to example-event-seed.
 
 ---
 
@@ -105,49 +125,83 @@ liveticker-skill-smart-helper/          [loop/smart-helper]          Loop 3 work
 
 All under `~/Documents/STARTPLATZ/04_Plattform-Software/Repos/`. Symlinks: each loop worktree has `.env` and `.venv` symlinked to the main worktree.
 
-### What works end-to-end (verified, as of 2026-05-06)
+### What works end-to-end (verified, as of 2026-05-06 end-of-session)
+
+**Setup phase:**
 - LLM call returns from GLM-5.1 ✓
-- Broadcaster demo runs against live LLM ✓
-- **5 explicit knowledge stores** in `skill/state.py`: Plan, Reality, Risk, Goals, Stakeholders + STATE singleton + audit() helper ✓
-- **3 input channels + read-side endpoints** in `skill/server.py`: `/join`, `/post`, `/signal`, `/ask`, `/state`, `/inbox/{id}`, `/config` ✓
-- **Reasoning loop** in `skill/reasoning.py`: LLM-backed Reality-vs-Plan diff, risk-threshold detection, role-specific fanout ✓
-- **`event-config.yaml` + loader** (`skill/config.py`) with FastAPI lifespan auto-seed on boot ✓ — currently still has the **old Tomorrowland seed**, slated for replacement (now: with *one preset of many*, not "the GOSIM seed")
-- **Killer-moment smoketest** `python -m examples.run_killer_moment_demo` — end-to-end, real LLM. ⚠️ Latency: 30–90s per LLM call.
-- **Self-test admin UI** at `GET /` (Jinja2 + HTMX, 2s auto-refresh): Plan/Risks/Goals/Reality/Stakeholders/Audit cards + quick-send forms + 3 demo presets. ✓
-- **Background-task LLM dispatch** for UI flows so it stays responsive. ✓
+- Multi-event store: create N events, exactly one `live`, switch via header dropdown ✓
+- Plan import via URL with auto-crawl (DE+EN keyword discovery, depth-2 BFS, ~8 pages, lang-skip), plain-text paste, or YAML — all reconciled via one LLM call ✓
+- Stakeholder wizard: manual per-category (8 defaults + custom) + bulk-import (CSV deterministic / plain-text via LLM with review-confirm flow) ✓
+- Magic-link generation per stakeholder (URL-format only — landing page not built yet) ✓
+- Re-import replaces an event's definition cleanly ✓
 
-### Backlog (no priority order — Tom decides when/if)
+**Reasoning loop:**
+- LLM-backed Reality-vs-Plan diff, risk-threshold detection, role-specific fanout ✓
+- Two reasoning axes: defensive (risks) + outcome-positive (wishes-at-risk) ✓
+- Plan-cascade detection: a single delay-signal can update multiple downstream items ✓
+- Per-event runtime: outbox/triggered_risk_ids/at_risk_wish_ids live on EventBundle ✓
+- Background-task LLM dispatch keeps UI responsive ✓
 
-**Generic-tool work (the new direction):**
-- Multi-source Setup endpoint(s): URL-fetch, file-upload (PDF/CSV/YAML at minimum), free-form text-paste
-- LLM extraction pipeline: from any source → plan items + suggested risks + per-role wish templates
-- Source reconciliation: merge / priority / conflict-flagging when multiple sources contradict
-- Setup-UI: review/edit extracted plan, risks, wishes before "go live"
-- Wishes data model: `Wish` Pydantic + `Wishes` store + per-stakeholder-role wish templates
-- Wishes-aware reasoning extension: second axis "whose wishes are at risk?"
-- Per-event-type presets: at least conference + festival + wedding as seed templates
-- README rewrite: drop hackathon framing, position as generic event-coordination agent
+**Plan UI:**
+- Multi-day grouping via collapsable `<details>` per day ✓
+- View-pills (chronological / by_day / by_track / by_where) — LLM-suggested per event during import; selection persisted in localStorage; survives 2s HTMX polling ✓
+- Plan-diff: `~~14:00~~ → 14:30 [delayed] was: planned` rendered when reasoning updates a snapshotted item ✓
+- `original_time`/`original_status` snapshot frozen on first go-live ✓
+- `reset-schedule` button restores from snapshot ✓
 
-**Carried over from the GOSIM-specific plan (now: example seed):**
-- Master-stage-delay scenario seed for the conference-event preset
-- Reschedule-cascade reasoning: when a plan item is delayed, cascade to downstream slots + identify wish conflicts
+**Default seed + smoketests:**
+- `event-config.yaml` is now a generic "Sample Festival" demo (Tomorrowland-branding removed) — also serves as one example among many ✓
+- `examples/run_killer_moment_demo.py` end-to-end with real LLM ✓ (latency 30–90s per call)
+
+**Docs:**
+- `docs/setup-guide.md` — German end-organizer onboarding guide covering prerequisites, software setup, step-by-step workflow, multi-event mode, per-import-path tips, what doesn't work well, troubleshooting, API reference, and Phase-3+ roadmap.
+
+### Backlog — what's blocking real live-event use
+
+**Phase 3 — Stakeholder frontend at `/me/{id}` (~2–3 h)** — *the multiplier-effect feature*
+- Mobile-friendly per-stakeholder page rendering: their plan slice (filtered to items where `who` includes their role, or all items toggleable), their inbox (already exists at `/inbox/{id}` — needs a UI), a "send signal" form that posts as them via `/post`/`/signal`, status-quo (active risks, recent reality signals).
+- Without this, magic-links 404 and the tool stays Tom-only. **This is the unblocker for actual stakeholder participation.**
+
+**Phase 4 — Background time-tick (~30–45 min)** — *makes the live-display alive*
+- Async background task in FastAPI lifespan, every 30–60s.
+- For each plan-item in the live event: if its planned time is now/past and status is still `planned`, transition to `in_progress`; if 5+ min past expected end and still `in_progress`, transition to `delayed` and fire a synthetic `schedule_tick` signal into the reasoning loop.
+- UI shows a "now: <slot>" anchor and time-since-start counter.
+- Without this, the plan is static text — user has no sense of where in the day they are.
+
+**Phase 1C — Optional password auth (~2–3 h)** — *defer until needed*
+- Stakeholder gets `password_hash` (bcrypt). Magic-link is the bootstrap; on first visit the person can set a password. Login form (email + password) for return visits. Sessions via signed cookie (`itsdangerous`).
+- Email-send not included — magic links shared manually (Slack/print/persönlich).
+- Only worth doing when there's a real privacy/security need; for personal-tool/portfolio use the magic-link is enough.
+
+**Phase 5 — External-stakeholder onboarding** — *deferred*
+- Public magic-link `/join?as=attendee` for QR codes on tickets.
+- Separate flow for sponsors/press (similar to internal but with appropriate `category`).
+
+**Polish backlog (low priority):**
+- Light persistence: SQLite snapshot every minute, reload on boot.
+- README rewrite: drop hackathon framing, position as generic event-coordination agent.
+- Configurable `Role` enum (Decision #19 — would let categories be the actual roles instead of the festival-flavored mapping). Bigger refactor, only if the festival-mapping starts to bite.
+- Audit-log filtering UI: `event_id` is now stamped on every audit entry, but the dashboard renders all events' events. A filter to "show only current event" would be nice.
 
 **Optional / dormant:**
-- Bühnenscreen variant of admin UI
-- Audience-as-System frontend (QR-landing → role-assignment) — only if Decision #7-bis becomes load-bearing again
+- Bühnenscreen variant of admin UI (Decision #12 dormant)
+- Audience-as-System QR-landing (Decision #7-bis dormant) — only if a stage demo becomes a thing again
+- Iterative LLM agent loop (Stufe 5: ReAct/tool-use) — discussed and rejected for the live-coordination path due to latency. Would only make sense in an enriched setup-phase ("agent crawls iteratively to fill gaps"), not in the runtime loop.
 
 ---
 
 ## How to continue this work in a fresh Claude Code session
 
 1. Open this CLAUDE.md (Claude Code reads it automatically when you start in this repo).
-2. Read the Status block above first. Confirm with Tom whether the direction (generic tool, no deadline) is still current — pivots happen.
-3. Check current commit: `git log --oneline -5` and `git status`.
+2. Read the Status block above first — it has the *most recent* state and what blocks real-event use. Confirm with Tom whether the direction is still current.
+3. Check current commit: `git log --oneline -5` and `git status`. Most recent build commit is `58ce221`.
 4. Verify env: run the smoketest `python -c "from skill.llm import chat; print(chat([{'role':'user','content':'hi'}]))"` — if HTTP 402, the API key needs renewal.
 5. **Default mode**: Tom is mode A (Claude codes, he reviews). Don't ask him to type code unless he explicitly switches modes.
-6. **Don't re-grill** unless user explicitly asks. The architectural decisions above are settled (with #11/#14 now example-only and #7-bis/#12 dormant).
+6. **Don't re-grill** unless user explicitly asks. Architectural decisions are settled — see the table; only #11/#14 are example-only and #7-bis/#12 dormant. Decisions #22-25 cover multi-event/auto-crawl/multi-day/event-aware-views.
 7. **Always sync changes to all 4 worktrees** when committing to main: `for loop in auto-broadcaster bottleneck-detector smart-helper; do git -C ../liveticker-skill-$loop merge main --ff-only && git -C ../liveticker-skill-$loop push; done`
 8. **No deadline.** Don't manufacture urgency. Tom drives pace.
+9. **Likely next ask from Tom**: build Phase 3 (stakeholder frontend at `/me/{id}`) — it's the unblocker for real-event use. Phase 4 (time-tick) is small and complementary. Both are clearly scoped in the Backlog section above. Don't start without explicit go from Tom.
+10. **Be honest about readiness for live use**: even after Phase 3+4, persistence is in-memory and mobile UX is rough. If Tom says "I want to use this at a real event tomorrow", check what's blocking and say so plainly — don't oversell.
 
 ---
 
